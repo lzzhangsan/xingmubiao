@@ -1,4 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:xingmubiao/src/models/checkin.dart';
+import 'package:xingmubiao/src/models/goal.dart';
+import 'package:xingmubiao/src/services/checkin_service.dart';
+import 'package:xingmubiao/src/services/goal_service.dart';
 
 class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
@@ -9,6 +15,38 @@ class CheckinScreen extends StatefulWidget {
 
 class _CheckinScreenState extends State<CheckinScreen> {
   DateTime _selectedDate = DateTime.now();
+  List<Goal> _goals = [];
+  bool _isLoading = true;
+  final ImagePicker _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGoals();
+  }
+
+  Future<void> _loadGoals() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final goals = await GoalService.getGoals();
+      setState(() {
+        _goals = goals;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('加载目标失败: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,27 +54,32 @@ class _CheckinScreenState extends State<CheckinScreen> {
       appBar: AppBar(
         title: const Text('今日打卡'),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 日期选择
-            _DateSelector(
-              selectedDate: _selectedDate,
-              onDateChanged: (date) {
-                setState(() {
-                  _selectedDate = date;
-                });
-              },
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  // 日期选择
+                  _DateSelector(
+                    selectedDate: _selectedDate,
+                    onDateChanged: (date) {
+                      setState(() {
+                        _selectedDate = date;
+                      });
+                    },
+                  ),
+                  
+                  // 打卡目标列表
+                  _CheckinGoalList(
+                    goals: _goals,
+                    selectedDate: _selectedDate,
+                  ),
+                  
+                  // 打卡统计
+                  const _CheckinStats(),
+                ],
+              ),
             ),
-            
-            // 打卡目标列表
-            const _CheckinGoalList(),
-            
-            // 打卡统计
-            const _CheckinStats(),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -82,19 +125,45 @@ class _DateSelector extends StatelessWidget {
   }
 }
 
-class _CheckinGoalList extends StatelessWidget {
-  const _CheckinGoalList();
+class _CheckinGoalList extends StatefulWidget {
+  final List<Goal> goals;
+  final DateTime selectedDate;
+
+  const _CheckinGoalList({
+    required this.goals,
+    required this.selectedDate,
+  });
+
+  @override
+  State<_CheckinGoalList> createState() => _CheckinGoalListState();
+}
+
+class _CheckinGoalListState extends State<_CheckinGoalList> {
+  final Map<String, _CheckinGoalItemState> _itemStates = {};
 
   @override
   Widget build(BuildContext context) {
+    if (widget.goals.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Text('暂无目标'),
+        ),
+      );
+    }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 3, // 示例数据
+      itemCount: widget.goals.length,
       itemBuilder: (context, index) {
         return _CheckinGoalItem(
-          title: '目标示例 $index',
-          points: 10,
+          key: ValueKey(widget.goals[index].id),
+          goal: widget.goals[index],
+          selectedDate: widget.selectedDate,
+          onStateCreated: (state) {
+            _itemStates[widget.goals[index].id] = state;
+          },
         );
       },
     );
@@ -102,12 +171,15 @@ class _CheckinGoalList extends StatelessWidget {
 }
 
 class _CheckinGoalItem extends StatefulWidget {
-  final String title;
-  final int points;
+  final Goal goal;
+  final DateTime selectedDate;
+  final Function(_CheckinGoalItemState) onStateCreated;
 
   const _CheckinGoalItem({
-    required this.title,
-    required this.points,
+    super.key,
+    required this.goal,
+    required this.selectedDate,
+    required this.onStateCreated,
   });
 
   @override
@@ -117,6 +189,89 @@ class _CheckinGoalItem extends StatefulWidget {
 class _CheckinGoalItemState extends State<_CheckinGoalItem> {
   int _selectedScore = 0;
   final TextEditingController _commentController = TextEditingController();
+  XFile? _image;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.onStateCreated(this);
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+      );
+      if (image != null) {
+        setState(() {
+          _image = image;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('选择图片失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _submitCheckin() async {
+    if (_selectedScore == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先评分')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final checkin = Checkin(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        goalId: widget.goal.id,
+        userId: 'child1',
+        score: _selectedScore,
+        comment: _commentController.text.isNotEmpty ? _commentController.text : null,
+        imageUrl: _image?.path, // 在实际应用中这里应该是上传后的URL
+        createdAt: widget.selectedDate,
+      );
+
+      await CheckinService.addCheckin(checkin);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('打卡成功')),
+        );
+        
+        // 重置表单
+        setState(() {
+          _selectedScore = 0;
+          _commentController.clear();
+          _image = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('打卡失败: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -128,14 +283,14 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.title,
+              widget.goal.title,
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            Text('+${widget.points}积分'),
+            Text('+${widget.goal.points}积分'),
             const SizedBox(height: 16),
             
             // 评分组件
@@ -171,21 +326,35 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
             const SizedBox(height: 16),
             
             // 图片上传
+            if (_image != null)
+              Column(
+                children: [
+                  Image.file(
+                    File(_image!.path),
+                    height: 100,
+                    fit: BoxFit.cover,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            
             Row(
               children: [
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // 上传图片
-                  },
+                  onPressed: _pickImage,
                   icon: const Icon(Icons.camera_alt),
-                  label: const Text('拍照打卡'),
+                  label: const Text('拍照'),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton(
-                  onPressed: _selectedScore > 0 ? () {
-                    // 提交打卡
-                  } : null,
-                  child: const Text('提交'),
+                  onPressed: _isSubmitting ? null : _submitCheckin,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('提交'),
                 ),
               ],
             ),

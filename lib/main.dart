@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'src/services/firebase_service.dart';
+import 'src/providers/app_provider.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/goal_list_screen.dart';
 import 'src/screens/checkin_screen.dart';
 import 'src/screens/stats_screen.dart';
 import 'src/screens/wishlist_screen.dart';
+import 'src/screens/achievements_screen.dart';
+import 'src/screens/add_goal_screen.dart';
+import 'src/screens/add_reward_screen.dart';
+import 'src/screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebaseService.initialize();
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => AppProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -25,6 +36,14 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const MainScreen(),
+      routes: {
+        '/goals': (context) => const GoalListScreen(),
+        '/add-goal': (context) => const AddGoalScreen(),
+        '/add-reward': (context) => const AddRewardScreen(),
+        '/wishlist': (context) => const WishlistScreen(),
+        '/achievements': (context) => const AchievementsScreen(),
+        '/settings': (context) => const SettingsScreen(),
+      },
     );
   }
 }
@@ -45,6 +64,7 @@ class _MainScreenState extends State<MainScreen> {
     const CheckinScreen(),
     const StatsScreen(),
     const WishlistScreen(),
+    const AchievementsScreen(),
   ];
 
   @override
@@ -79,8 +99,21 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.card_giftcard),
             label: '心愿',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_events),
+            label: '成就',
+          ),
         ],
       ),
+      floatingActionButton: _currentIndex == 4
+          ? FloatingActionButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/add-reward');
+              },
+              child: const Icon(Icons.add),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
