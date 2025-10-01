@@ -13,6 +13,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _totalPoints = 0;
   List<Goal> _todayGoals = [];
+  List<bool> _checkedGoals = [];
 
   @override
   void initState() {
@@ -30,6 +31,13 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _totalPoints = points;
       _todayGoals = goals;
+      _checkedGoals = List.generate(goals.length, (index) => false);
+    });
+  }
+
+  void _toggleGoal(int index) {
+    setState(() {
+      _checkedGoals[index] = !_checkedGoals[index];
     });
   }
 
@@ -43,6 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.notifications),
             onPressed: () {
               // 处理通知点击
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('暂无新通知')),
+              );
             },
           ),
         ],
@@ -54,7 +65,11 @@ class _HomeScreenState extends State<HomeScreen> {
             _StatisticsCard(totalPoints: _totalPoints),
             
             // 今日目标列表
-            _TodayGoalsSection(goals: _todayGoals),
+            _TodayGoalsSection(
+              goals: _todayGoals,
+              checkedGoals: _checkedGoals,
+              onToggleGoal: _toggleGoal,
+            ),
             
             // 心愿库预览
             const _WishlistPreview(),
@@ -67,28 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // 添加新目标
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('添加新目标功能待实现')),
+          );
         },
         child: const Icon(Icons.add),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: '首页',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.checklist),
-            label: '目标',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_graph),
-            label: '统计',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.card_giftcard),
-            label: '心愿',
-          ),
-        ],
       ),
     );
   }
@@ -149,8 +147,14 @@ class _StatItem extends StatelessWidget {
 
 class _TodayGoalsSection extends StatelessWidget {
   final List<Goal> goals;
+  final List<bool> checkedGoals;
+  final Function(int) onToggleGoal;
 
-  const _TodayGoalsSection({required this.goals});
+  const _TodayGoalsSection({
+    required this.goals,
+    required this.checkedGoals,
+    required this.onToggleGoal,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -171,10 +175,11 @@ class _TodayGoalsSection extends StatelessWidget {
         if (goals.isEmpty)
           const Center(child: Text('暂无目标'))
         else
-          ...goals.map((goal) => _GoalItem(
-                title: goal.title,
-                points: goal.points,
-                isChecked: false,
+          ...goals.asMap().entries.map((entry) => _GoalItem(
+                title: entry.value.title,
+                points: entry.value.points,
+                isChecked: checkedGoals[entry.key],
+                onChanged: (value) => onToggleGoal(entry.key),
               )),
       ],
     ),
@@ -186,11 +191,13 @@ class _GoalItem extends StatelessWidget {
   final String title;
   final int points;
   final bool isChecked;
+  final Function(bool?) onChanged;
 
   const _GoalItem({
     required this.title,
     required this.points,
     required this.isChecked,
+    required this.onChanged,
   });
 
   @override
@@ -199,7 +206,7 @@ class _GoalItem extends StatelessWidget {
       child: ListTile(
         leading: Checkbox(
           value: isChecked,
-          onChanged: (value) {},
+          onChanged: onChanged,
         ),
         title: Text(title),
         trailing: Text('+${points}积分'),
@@ -218,12 +225,24 @@ class _WishlistPreview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '心愿库',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '心愿库',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // 跳转到心愿库页面
+                  Navigator.pushNamed(context, '/wishlist');
+                },
+                child: const Text('查看更多'),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           // 心愿预览列表
@@ -232,7 +251,11 @@ class _WishlistPreview extends StatelessWidget {
               title: const Text('玩具车'),
               subtitle: const Text('需要200积分'),
               trailing: ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('积分不足，无法兑换')),
+                  );
+                },
                 child: const Text('兑换'),
               ),
             ),

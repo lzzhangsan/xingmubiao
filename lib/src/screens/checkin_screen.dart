@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 
-class CheckinScreen extends StatelessWidget {
+class CheckinScreen extends StatefulWidget {
   const CheckinScreen({super.key});
+
+  @override
+  State<CheckinScreen> createState() => _CheckinScreenState();
+}
+
+class _CheckinScreenState extends State<CheckinScreen> {
+  DateTime _selectedDate = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
@@ -9,17 +16,24 @@ class CheckinScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('今日打卡'),
       ),
-      body: const SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Column(
           children: [
             // 日期选择
-            _DateSelector(),
+            _DateSelector(
+              selectedDate: _selectedDate,
+              onDateChanged: (date) {
+                setState(() {
+                  _selectedDate = date;
+                });
+              },
+            ),
             
             // 打卡目标列表
-            _CheckinGoalList(),
+            const _CheckinGoalList(),
             
             // 打卡统计
-            _CheckinStats(),
+            const _CheckinStats(),
           ],
         ),
       ),
@@ -28,7 +42,13 @@ class CheckinScreen extends StatelessWidget {
 }
 
 class _DateSelector extends StatelessWidget {
-  const _DateSelector();
+  final DateTime selectedDate;
+  final Function(DateTime) onDateChanged;
+
+  const _DateSelector({
+    required this.selectedDate,
+    required this.onDateChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +60,12 @@ class _DateSelector extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              // 前一天
+              onDateChanged(selectedDate.subtract(const Duration(days: 1)));
             },
           ),
-          const Text(
-            '2025年10月1日',
-            style: TextStyle(
+          Text(
+            '${selectedDate.year}年${selectedDate.month}月${selectedDate.day}日',
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -53,7 +73,7 @@ class _DateSelector extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.arrow_forward),
             onPressed: () {
-              // 后一天
+              onDateChanged(selectedDate.add(const Duration(days: 1)));
             },
           ),
         ],

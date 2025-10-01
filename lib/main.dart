@@ -3,6 +3,8 @@ import 'src/services/firebase_service.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/goal_list_screen.dart';
 import 'src/screens/checkin_screen.dart';
+import 'src/screens/stats_screen.dart';
+import 'src/screens/wishlist_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,8 +43,8 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const GoalListScreen(),
     const CheckinScreen(),
-    const Placeholder(child: Text('统计页面')),
-    const Placeholder(child: Text('心愿页面')),
+    const StatsScreen(),
+    const WishlistScreen(),
   ];
 
   @override

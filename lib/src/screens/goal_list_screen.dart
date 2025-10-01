@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
-class GoalListScreen extends StatelessWidget {
+class GoalListScreen extends StatefulWidget {
   const GoalListScreen({super.key});
+
+  @override
+  State<GoalListScreen> createState() => _GoalListScreenState();
+}
+
+class _GoalListScreenState extends State<GoalListScreen> {
+  int _selectedCategoryIndex = 0;
+
+  final List<String> _categories = [
+    '全部',
+    '学习',
+    '生活',
+    '兴趣',
+    '挑战',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -13,18 +28,29 @@ class GoalListScreen extends StatelessWidget {
             icon: const Icon(Icons.add),
             onPressed: () {
               // 添加新目标
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('添加新目标功能待实现')),
+              );
             },
           ),
         ],
       ),
-      body: const SingleChildScrollView(
+      body: SingleChildScrollView(
         child: Column(
           children: [
             // 目标分类标签
-            _CategoryTabs(),
+            _CategoryTabs(
+              categories: _categories,
+              selectedIndex: _selectedCategoryIndex,
+              onCategorySelected: (index) {
+                setState(() {
+                  _selectedCategoryIndex = index;
+                });
+              },
+            ),
             
             // 目标列表
-            _GoalList(),
+            const _GoalList(),
           ],
         ),
       ),
@@ -33,19 +59,27 @@ class GoalListScreen extends StatelessWidget {
 }
 
 class _CategoryTabs extends StatelessWidget {
-  const _CategoryTabs();
+  final List<String> categories;
+  final int selectedIndex;
+  final Function(int) onCategorySelected;
+
+  const _CategoryTabs({
+    required this.categories,
+    required this.selectedIndex,
+    required this.onCategorySelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const SingleChildScrollView(
+    return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _CategoryTab(title: '全部', isSelected: true),
-          _CategoryTab(title: '学习'),
-          _CategoryTab(title: '生活'),
-          _CategoryTab(title: '兴趣'),
-          _CategoryTab(title: '挑战'),
+          ...categories.asMap().entries.map((entry) => _CategoryTab(
+                title: entry.value,
+                isSelected: entry.key == selectedIndex,
+                onTap: () => onCategorySelected(entry.key),
+              )),
         ],
       ),
     );
@@ -55,22 +89,30 @@ class _CategoryTabs extends StatelessWidget {
 class _CategoryTab extends StatelessWidget {
   final String title;
   final bool isSelected;
+  final Function() onTap;
 
-  const _CategoryTab({required this.title, this.isSelected = false});
+  const _CategoryTab({
+    required this.title,
+    this.isSelected = false,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.blue : Colors.grey[300],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue : Colors.grey[300],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black,
+          ),
         ),
       ),
     );
