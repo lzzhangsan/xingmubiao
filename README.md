@@ -33,3 +33,42 @@
 2. 运行 `flutter pub get` 安装依赖
 3. 配置Firebase项目
 4. 运行 `flutter run` 启动应用
+
+## 自动化构建
+
+本项目使用GitHub Actions进行自动化构建。每当有代码推送到`main`或`master`分支时，会自动触发构建流程。
+
+### 构建流程包括：
+
+1. 代码检出
+2. 设置Java和Flutter环境
+3. 安装项目依赖
+4. 代码静态分析
+5. 运行单元测试
+6. 构建APK和App Bundle
+7. 上传构建产物作为artifact
+
+### 发布版本
+
+当推送带有`v`前缀的标签（如`v1.0.0`）时，会自动创建GitHub Release并附带APK和App Bundle文件。
+
+### 签名配置
+
+为了安全起见，签名密钥文件不应提交到版本控制系统中。如果需要发布正式版本，请按照以下步骤操作：
+
+1. 在本地生成签名密钥：
+   ```bash
+   keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+   ```
+
+2. 创建`android/key.properties`文件并填写相关信息：
+   ```properties
+   storePassword=你的密钥库密码
+   keyPassword=你的密钥密码
+   keyAlias=upload
+   storeFile=../app/keystore.jks
+   ```
+
+3. 将密钥库文件放置在`android/app/keystore.jks`位置
+
+注意：这些文件已被添加到`.gitignore`中，不会被提交到版本控制。
