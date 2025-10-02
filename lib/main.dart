@@ -11,10 +11,12 @@ import 'src/screens/achievements_screen.dart';
 import 'src/screens/add_goal_screen.dart';
 import 'src/screens/add_reward_screen.dart';
 import 'src/screens/settings_screen.dart';
+import 'src/services/firebase_initializer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseService.initialize();
+  // 使用新的Firebase初始化器，即使失败也不会中断应用启动
+  await FirebaseInitializer.initializeFirebase();
   runApp(
     ChangeNotifierProvider(
       create: (context) => AppProvider(),

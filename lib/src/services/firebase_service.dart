@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:xingmubiao/src/services/notification_service.dart';
+import 'package:flutter/foundation.dart';
 
 class FirebaseService {
   static bool _initialized = false;
@@ -14,9 +15,9 @@ class FirebaseService {
       await NotificationService().init();
       
       _initialized = true;
-      print('Firebase initialized successfully');
+      debugPrint('Firebase initialized successfully');
     } catch (e) {
-      print('Error initializing Firebase: $e');
+      debugPrint('Error initializing Firebase: $e');
       // 在开发环境中，我们可以使用模拟数据
       await NotificationService().init();
       _initialized = true;
