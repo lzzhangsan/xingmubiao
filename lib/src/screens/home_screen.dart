@@ -17,7 +17,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<bool> _checkedGoals = [];
   bool _isLoading = true;
   late AnimationController _pointsController;
-  late Animation<int> _pointsAnimation;
+  Animation<int>? _pointsAnimation;
 
   @override
   void initState() {
@@ -105,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       
       // 设置积分动画
       _pointsAnimation = IntTween(
-        begin: _pointsAnimation.value,
+        begin: _pointsAnimation?.value ?? 0,
         end: points,
       ).animate(_pointsController);
       _pointsController.forward(from: 0.0);
