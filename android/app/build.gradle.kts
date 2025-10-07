@@ -1,15 +1,19 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    // 添加Google服务插件
-    id("com.google.gms.google-services")
 }
 
-// Load keystore properties
-import java.util.Properties
-import java.io.FileInputStream
+val googleServicesFile = file("google-services.json")
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("google-services.json not found. Skipping Google Services plugin application.")
+}
 
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()

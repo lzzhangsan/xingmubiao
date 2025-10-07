@@ -11,35 +11,41 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    // 初始化时区数据
-    tz.initializeTimeZones();
-    
-    // Android初始化设置
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    try {
+      // 初始化时区数据
+      tz.initializeTimeZones();
+      
+      // Android初始化设置
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // iOS初始化设置
-    final DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+      // iOS初始化设置
+      final DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    // 初始化设置
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
+      // 初始化设置
+      final InitializationSettings initializationSettings =
+          InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsIOS,
+      );
 
-    await _notificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse details) {
-        // 处理通知点击事件
-        print('Notification clicked: ${details.payload}');
-      },
-    );
+      await _notificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse details) {
+          // 处理通知点击事件
+          print('Notification clicked: ${details.payload}');
+        },
+      );
+      print('Notification service initialized successfully');
+    } catch (e) {
+      print('Notification service initialization failed: $e');
+      // 即使通知服务初始化失败，也不影响应用运行
+    }
   }
 
   Future<void> scheduleDailyNotification({

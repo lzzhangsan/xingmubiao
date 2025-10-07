@@ -9,17 +9,14 @@ class FirebaseService {
     if (_initialized) return;
     
     try {
-      await Firebase.initializeApp();
-      
-      // 初始化通知服务
+      // 跳过Firebase初始化，直接初始化通知服务
       await NotificationService().init();
       
       _initialized = true;
-      debugPrint('Firebase initialized successfully');
+      debugPrint('Services initialized successfully (Firebase disabled)');
     } catch (e) {
-      debugPrint('Error initializing Firebase: $e');
-      // 在开发环境中，我们可以使用模拟数据
-      await NotificationService().init();
+      debugPrint('Error initializing services: $e');
+      // 即使通知服务初始化失败，也标记为已初始化
       _initialized = true;
     }
   }

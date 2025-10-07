@@ -17,7 +17,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<bool> _checkedGoals = [];
   bool _isLoading = true;
   late AnimationController _pointsController;
-  late Animation<int> _pointsAnimation;
+  Animation<int>? _pointsAnimation;
 
   @override
   void initState() {
@@ -47,18 +47,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // 加载今日目标
       final goals = await GoalService.getGoals();
       
+      final previousPoints = _totalPoints;
+
       setState(() {
         _totalPoints = points;
         _todayGoals = goals;
         _checkedGoals = List.generate(goals.length, (index) => false);
         _isLoading = false;
+        _pointsAnimation = IntTween(
+          begin: previousPoints,
+          end: points,
+        ).animate(_pointsController);
       });
-      
-      // 设置积分动画
-      _pointsAnimation = IntTween(
-        begin: _pointsAnimation?.value ?? 0,
-        end: points,
-      ).animate(_pointsController);
+
       _pointsController.forward(from: 0.0);
     } catch (e) {
       setState(() {
@@ -99,25 +100,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       
       // 更新总积分显示
       final points = await PointService.getTotalPoints('child1');
+      final previousPoints = _totalPoints;
+
+      if (!mounted) return;
+
       setState(() {
         _totalPoints = points;
+        _pointsAnimation = IntTween(
+          begin: previousPoints,
+          end: points,
+        ).animate(_pointsController);
       });
-      
-      // 设置积分动画
-      _pointsAnimation = IntTween(
-        begin: _pointsAnimation.value,
-        end: points,
-      ).animate(_pointsController);
+
       _pointsController.forward(from: 0.0);
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('获得${goal.points}积分！'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('获得${goal.points}积分！'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
