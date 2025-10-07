@@ -5,7 +5,6 @@ import 'package:xingmubiao/src/models/point.dart';
 import 'package:xingmubiao/src/models/reward.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/add_goal_screen.dart';
-import 'package:xingmubiao/src/screens/checkin_screen.dart';
 import 'package:xingmubiao/src/screens/goal_list_screen.dart';
 import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/screens/wishlist_screen.dart';
@@ -203,12 +202,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _openCheckin() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CheckinScreen()),
-    );
-  }
 
   void _openWishlist() {
     Navigator.push(
@@ -289,12 +282,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               totalPoints: _totalPoints,
                               animation: _pointsAnimation,
                             ),
-                            _QuickActions(
-                              onAddGoal: _openAddGoal,
-                              onCheckin: _openCheckin,
-                              onManageGoal: _openGoalList,
-                              onViewRewards: _openWishlist,
-                            ),
+                            // 快捷操作入口已由底部导航替代，移除冗余按钮
                             _TodayGoalsSection(
                               goals: _todayGoals,
                               checkedGoals: _checkedGoals,
@@ -421,36 +409,7 @@ class _AnimatedStatItem extends StatelessWidget {
   }
 }
 
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({
-    required this.onAddGoal,
-    required this.onCheckin,
-    required this.onManageGoal,
-    required this.onViewRewards,
-  });
-
-  final VoidCallback onAddGoal;
-  final VoidCallback onCheckin;
-  final VoidCallback onManageGoal;
-  final VoidCallback onViewRewards;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [
-          FilledButton.tonal(onPressed: onAddGoal, child: const Text('添加目标')),
-          FilledButton.tonal(onPressed: onManageGoal, child: const Text('管理目标')),
-          FilledButton.tonal(onPressed: onCheckin, child: const Text('去打卡')),
-          FilledButton.tonal(onPressed: onViewRewards, child: const Text('心愿奖励')),
-        ],
-      ),
-    );
-  }
-}
+// _QuickActions 已移除
 
 class _TodayGoalsSection extends StatelessWidget {
   const _TodayGoalsSection({

@@ -296,6 +296,48 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
   final TextEditingController _commentController = TextEditingController();
   XFile? _image;
   bool _isSubmitting = false;
+  String? _existingCheckinId; // 若已打卡则保存其ID，支持覆盖更新
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingIfAny();
+  }
+
+  Future<void> _loadExistingIfAny() async {
+    try {
+      final sameDayCheckins = await CheckinService.getCheckinsForChildByDate(
+        widget.childId,
+        widget.selectedDate,
+      );
+      final existing = sameDayCheckins.firstWhere(
+        (c) => c.goalId == widget.goal.id,
+        orElse: () => Checkin(
+          id: '',
+          goalId: widget.goal.id,
+          userId: widget.childId,
+          score: 0,
+          comment: null,
+          imageUrl: null,
+          createdAt: widget.selectedDate,
+        ),
+      );
+      if (existing.id.isNotEmpty) {
+        setState(() {
+          _existingCheckinId = existing.id;
+          _selectedScore = existing.score;
+          if (existing.comment != null) {
+            _commentController.text = existing.comment!;
+          }
+          if (existing.imageUrl != null && existing.imageUrl!.isNotEmpty) {
+            _image = XFile(existing.imageUrl!);
+          }
+        });
+      }
+    } catch (_) {
+      // 读取失败不影响打卡流程
+    }
+  }
 
   @override
   void dispose() {
@@ -328,8 +370,8 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
     setState(() => _isSubmitting = true);
 
     try {
-      final checkin = Checkin(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      final newOrUpdated = Checkin(
+        id: _existingCheckinId ?? DateTime.now().millisecondsSinceEpoch.toString(),
         goalId: widget.goal.id,
         userId: widget.childId,
         score: _selectedScore,
@@ -338,17 +380,19 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         createdAt: widget.selectedDate,
       );
 
-      await CheckinService.addCheckin(checkin);
+      if (_existingCheckinId == null) {
+        await CheckinService.addCheckin(newOrUpdated);
+      } else {
+        await CheckinService.updateCheckin(newOrUpdated);
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('打卡完成')),
+        const SnackBar(content: Text('已保存打卡')),
       );
 
-      _commentController.clear();
-      _image = null;
       setState(() {
-        _selectedScore = 0;
+        _existingCheckinId = newOrUpdated.id;
         _isSubmitting = false;
       });
 
