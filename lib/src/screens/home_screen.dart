@@ -155,17 +155,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   int _calculatePoints(List<Point> records, {required int days}) {
-    if (records.isEmpty) return 0;
+    // 只计算earned类型的积分，spent类型的积分已经在总积分中被减去了
+    final earnedRecords = records.where((record) => record.type == 'earned').toList();
+    
+    if (earnedRecords.isEmpty) return 0;
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, now.day)
         .subtract(Duration(days: days - 1));
     int total = 0;
-    for (final record in records) {
+    for (final record in earnedRecords) {
       final created = DateTime(record.createdAt.year, record.createdAt.month,
           record.createdAt.day);
       if (created.isBefore(start)) continue;
-      final value = record.type == 'spent' ? -record.amount : record.amount;
-      total += value;
+      total += record.amount;
     }
     return total;
   }
