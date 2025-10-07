@@ -1,6 +1,7 @@
 ﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/models/checkin.dart';
@@ -105,6 +106,21 @@ class _CheckinScreenState extends State<CheckinScreen> {
     _loadData();
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: '选择日期',
+      confirmText: '确定',
+      cancelText: '取消',
+    );
+    if (picked != null) {
+      _changeDate(picked);
+    }
+  }
+
   int get _completedCount => _checkins.length;
 
   int get _totalPoints {
@@ -180,6 +196,7 @@ class _CheckinScreenState extends State<CheckinScreen> {
                             _DateSelector(
                               selectedDate: _selectedDate,
                               onDateChanged: _changeDate,
+                              onOpenPicker: _pickDate,
                             ),
                             _CheckinGoalList(
                               childId: selectedChild.id,
@@ -204,13 +221,16 @@ class _DateSelector extends StatelessWidget {
   const _DateSelector({
     required this.selectedDate,
     required this.onDateChanged,
+    required this.onOpenPicker,
   });
 
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateChanged;
+  final VoidCallback onOpenPicker;
 
   @override
   Widget build(BuildContext context) {
+    final weekdayLabel = DateFormat.E('zh_CN').format(selectedDate); // 周几
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -220,9 +240,22 @@ class _DateSelector extends StatelessWidget {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => onDateChanged(selectedDate.subtract(const Duration(days: 1))),
           ),
-          Text(
-            '${selectedDate.year}年${selectedDate.month}月${selectedDate.day}日',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          InkWell(
+            onTap: onOpenPicker,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Text(
+                    '${selectedDate.year}年${selectedDate.month}月${selectedDate.day}日  ($weekdayLabel)',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.calendar_today, size: 18),
+                ],
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward),
