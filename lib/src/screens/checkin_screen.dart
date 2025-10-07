@@ -198,16 +198,16 @@ class _CheckinScreenState extends State<CheckinScreen> {
                               onDateChanged: _changeDate,
                               onOpenPicker: _pickDate,
                             ),
+                            _CheckinStats(
+                              completedCount: _completedCount,
+                              totalPoints: _totalPoints,
+                              averageScore: _averageScore,
+                            ),
                             _CheckinGoalList(
                               childId: selectedChild.id,
                               goals: _goals,
                               selectedDate: _selectedDate,
                               onSubmitted: () => _loadData(showLoader: false),
-                            ),
-                            _CheckinStats(
-                              completedCount: _completedCount,
-                              totalPoints: _totalPoints,
-                              averageScore: _averageScore,
                             ),
                           ],
                         ),
