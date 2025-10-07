@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
@@ -58,6 +60,17 @@ class ChildSelector extends StatelessWidget {
                 else
                   const SizedBox(width: 18),
                 const SizedBox(width: 8),
+                CircleAvatar(
+                  // 将半径从12增加到24（双倍大小）
+                  radius: 24,
+                  backgroundImage: child.avatarUrl.isNotEmpty
+                      ? FileImage(File(child.avatarUrl))
+                      : null,
+                  child: child.avatarUrl.isEmpty
+                      ? Text(child.name.isNotEmpty ? child.name[0] : '?')
+                      : null,
+                ),
+                const SizedBox(width: 8),
                 Text(child.name),
               ],
             ),
@@ -79,8 +92,17 @@ class ChildSelector extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.family_restroom_outlined),
-            const SizedBox(width: 4),
+            CircleAvatar(
+              // 将半径从14增加到28（双倍大小）
+              radius: 28,
+              backgroundImage: (selected?.avatarUrl.isNotEmpty ?? false)
+                  ? FileImage(File(selected!.avatarUrl))
+                  : null,
+              child: (selected?.avatarUrl.isEmpty ?? true)
+                  ? Text((selected?.name.isNotEmpty ?? false) ? selected!.name[0] : '?')
+                  : null,
+            ),
+            const SizedBox(width: 6),
             Text(selected?.name ?? '选择孩子'),
             const Icon(Icons.arrow_drop_down),
           ],

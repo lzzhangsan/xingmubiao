@@ -305,6 +305,8 @@ class _FamilyScreenState extends State<FamilyScreen> {
                 return Card(
                   child: ListTile(
                     leading: CircleAvatar(
+                      // 将默认大小调整为双倍
+                      radius: 24,
                       child: Text(member.name[0]),
                     ),
                     title: Text(member.name),
