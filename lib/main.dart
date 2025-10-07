@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'src/providers/app_provider.dart';
@@ -11,9 +11,11 @@ import 'src/screens/stats_screen.dart';
 import 'src/screens/wishlist_screen.dart';
 import 'src/screens/add_reward_screen.dart';
 import 'src/services/firebase_initializer.dart';
+import 'src/storage/local_data_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalDataStore.init();
   await FirebaseInitializer.initializeFirebase();
   runApp(
     ChangeNotifierProvider(

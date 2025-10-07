@@ -1,74 +1,71 @@
-import 'package:xingmubiao/src/models/point.dart';
+﻿import 'package:xingmubiao/src/models/point.dart';
+import 'package:xingmubiao/src/storage/local_data_store.dart';
 
 class PointService {
-  // 模拟积分流水，实际项目可替换为数据库或接口
-  static final List<Point> _points = [
-    Point(
-      id: '1',
-      userId: 'child1',
-      amount: 10,
-      reason: '完成阅读 30 分钟',
-      type: 'earned',
-      relatedId: 'goal1',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Point(
-      id: '2',
-      userId: 'child1',
-      amount: 5,
-      reason: '整理书桌',
-      type: 'earned',
-      relatedId: 'goal2',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Point(
-      id: '3',
-      userId: 'child1',
-      amount: 80,
-      reason: '兑换喜欢的小零食',
-      type: 'spent',
-      relatedId: 'reward3',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
+  static const _storageKey = 'points';
+  static List<Point> _cache = [];
+  static bool _loaded = false;
+
+  static Future<void> _ensureLoaded() async {
+    if (_loaded) return;
+    final data = await LocalDataStore.loadList(_storageKey);
+    _cache = data.map(Point.fromJson).toList();
+    _loaded = true;
+  }
+
+  static Future<void> _persist() async {
+    await LocalDataStore.saveList(
+      _storageKey,
+      _cache.map((point) => point.toJson()).toList(),
+    );
+  }
 
   static Future<List<Point>> getPoints() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return List<Point>.from(_points);
+    await _ensureLoaded();
+    return List<Point>.from(_cache);
   }
 
   static Future<List<Point>> getPointsByUser(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    return _points.where((p) => p.userId == userId).toList();
+    await _ensureLoaded();
+    return _cache.where((point) => point.userId == userId).toList();
   }
 
   static Future<int> getTotalPoints(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    final earned = _points
-        .where((p) => p.userId == userId && p.type == 'earned')
+    await _ensureLoaded();
+    final earned = _cache
+        .where((point) => point.userId == userId && point.type == 'earned')
         .fold<int>(0, (sum, point) => sum + point.amount);
-    final spent = _points
-        .where((p) => p.userId == userId && p.type == 'spent')
+    final spent = _cache
+        .where((point) => point.userId == userId && point.type == 'spent')
         .fold<int>(0, (sum, point) => sum + point.amount);
     return earned - spent;
   }
 
   static Future<Point> addPoint(Point point) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    _points.add(point);
+    await _ensureLoaded();
+    _cache.add(point);
+    await _persist();
     return point;
   }
 
   static Future<void> updatePoint(Point point) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    final index = _points.indexWhere((p) => p.id == point.id);
+    await _ensureLoaded();
+    final index = _cache.indexWhere((p) => p.id == point.id);
     if (index != -1) {
-      _points[index] = point;
+      _cache[index] = point;
+      await _persist();
     }
   }
 
   static Future<void> deletePoint(String pointId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    _points.removeWhere((p) => p.id == pointId);
+    await _ensureLoaded();
+    _cache.removeWhere((point) => point.id == pointId);
+    await _persist();
+  }
+
+  static Future<void> clear() async {
+    _cache = [];
+    _loaded = true;
+    await _persist();
   }
 }

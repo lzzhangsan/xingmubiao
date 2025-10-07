@@ -1,14 +1,18 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/models/goal.dart';
 import 'package:xingmubiao/src/models/point.dart';
 import 'package:xingmubiao/src/models/reward.dart';
+import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/add_goal_screen.dart';
 import 'package:xingmubiao/src/screens/checkin_screen.dart';
 import 'package:xingmubiao/src/screens/goal_list_screen.dart';
+import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/screens/wishlist_screen.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
 import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:xingmubiao/src/services/reward_service.dart';
+import 'package:xingmubiao/src/widgets/child_selector.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,121 +22,171 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  bool _isLoading = true;
+  bool _isFetching = false;
   int _totalPoints = 0;
+  int _todayPoints = 0;
+  int _weekPoints = 0;
   List<Goal> _todayGoals = [];
   List<bool> _checkedGoals = [];
   List<Reward> _wishlistPreview = [];
-  bool _isLoading = true;
 
   late final AnimationController _pointsController;
   Animation<int>? _pointsAnimation;
+  AppProvider? _provider;
+  String? _currentChildId;
 
   @override
   void initState() {
     super.initState();
     _pointsController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 400),
     );
-    _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = Provider.of<AppProvider>(context);
+    if (_provider != provider) {
+      _provider?.removeListener(_handleProviderChanged);
+      _provider = provider;
+      provider.addListener(_handleProviderChanged);
+      _handleProviderChanged();
+    }
   }
 
   @override
   void dispose() {
+    _provider?.removeListener(_handleProviderChanged);
     _pointsController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData({bool showLoader = true}) async {
-    try {
-      if (showLoader) {
-        setState(() => _isLoading = true);
-      }
+  void _handleProviderChanged() {
+    final provider = _provider;
+    if (provider == null || !provider.isInitialized) return;
+    final newChildId = provider.selectedChild?.id;
+    if (newChildId != _currentChildId) {
+      _currentChildId = newChildId;
+      _loadData();
+    }
+  }
 
+  Future<void> _loadData({bool showLoader = true}) async {
+    final provider = _provider;
+    if (provider == null || !provider.isInitialized) return;
+    final child = provider.selectedChild;
+    if (child == null) {
+      setState(() {
+        _isLoading = false;
+        _totalPoints = 0;
+        _todayPoints = 0;
+        _weekPoints = 0;
+        _todayGoals = [];
+        _checkedGoals = [];
+        _wishlistPreview = [];
+        _pointsAnimation = null;
+      });
+      return;
+    }
+
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if (showLoader) {
+      setState(() => _isLoading = true);
+    }
+
+    try {
       final previousPoints = _totalPoints;
-      final pointsFuture = PointService.getTotalPoints('child1');
-      final goalsFuture = GoalService.getGoals();
+      final totalPointsFuture = PointService.getTotalPoints(child.id);
+      final pointRecordsFuture = PointService.getPointsByUser(child.id);
+      final goalsFuture = GoalService.getGoalsForChild(child.id);
       final rewardsFuture = RewardService.getRewards();
 
-      final points = await pointsFuture;
+      final totalPoints = await totalPointsFuture;
+      final pointRecords = await pointRecordsFuture;
       final goals = await goalsFuture;
       final rewards = await rewardsFuture;
 
-      if (!mounted) return;
+      final todayPoints = _calculatePoints(pointRecords, days: 1);
+      final weekPoints = _calculatePoints(pointRecords, days: 7);
 
+      if (!mounted) return;
       setState(() {
-        _totalPoints = points;
+        _totalPoints = totalPoints;
+        _todayPoints = todayPoints;
+        _weekPoints = weekPoints;
         _todayGoals = goals;
         _checkedGoals = List<bool>.filled(goals.length, false);
         _wishlistPreview = rewards.take(3).toList();
         _isLoading = false;
         _pointsAnimation = IntTween(
           begin: previousPoints,
-          end: points,
+          end: totalPoints,
         ).animate(_pointsController);
       });
-
       _pointsController.forward(from: 0);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('加载数据失败：$e')),
+        SnackBar(content: Text('加载首页数据失败: $e')),
       );
+    } finally {
+      _isFetching = false;
     }
   }
 
-  void _toggleGoal(int index) {
-    setState(() {
-      _checkedGoals[index] = !_checkedGoals[index];
-    });
-
-    if (_checkedGoals[index]) {
-      _addPointsForGoal(_todayGoals[index]);
+  int _calculatePoints(List<Point> records, {required int days}) {
+    if (records.isEmpty) return 0;
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: days - 1));
+    int total = 0;
+    for (final record in records) {
+      final created = DateTime(record.createdAt.year, record.createdAt.month,
+          record.createdAt.day);
+      if (created.isBefore(start)) continue;
+      final value = record.type == 'spent' ? -record.amount : record.amount;
+      total += value;
     }
+    return total;
   }
 
   Future<void> _addPointsForGoal(Goal goal) async {
+    final child = _provider?.selectedChild;
+    if (child == null) return;
+
     try {
       final point = Point(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: 'child1',
+        userId: child.id,
         amount: goal.points,
-        reason: '完成目标：${goal.title}',
+        reason: '完成目标: ${goal.title}',
         type: 'earned',
         relatedId: goal.id,
         createdAt: DateTime.now(),
       );
 
       await PointService.addPoint(point);
-      final points = await PointService.getTotalPoints('child1');
+      await _loadData(showLoader: false);
+
       if (!mounted) return;
-
-      final previousPoints = _totalPoints;
-      setState(() {
-        _totalPoints = points;
-        _pointsAnimation = IntTween(
-          begin: previousPoints,
-          end: points,
-        ).animate(_pointsController);
-      });
-      _pointsController.forward(from: 0);
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('获得 ${goal.points} 积分！'),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('获得 ${goal.points} 积分')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('积分添加失败：$e')),
+        SnackBar(content: Text('积分记录失败: $e')),
       );
     }
   }
 
-  Future<void> _navigateToAddGoal() async {
+  Future<void> _openAddGoal() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const AddGoalScreen()),
@@ -163,85 +217,129 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildNoChildView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.child_care_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text('还没有孩子成员，请先添加孩子再开始使用'),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const UserManagementScreen(),
+                  ),
+                );
+              },
+              child: const Text('前往成员管理'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final selectedChild = provider.selectedChild;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('星目标'),
         actions: [
+          const ChildSelector(),
           IconButton(
-            tooltip: '消息中心',
+            tooltip: '消息提醒',
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('暂无新通知')),
+                const SnackBar(content: Text('暂时没有新通知')),
               );
             },
           ),
           IconButton(
             tooltip: '设置',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.pushNamed(context, '/settings');
-            },
+            onPressed: () => Navigator.pushNamed(context, '/settings'),
           ),
         ],
       ),
-      body: _isLoading
+      body: !provider.isInitialized
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () => _loadData(showLoader: false),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _UserGuideCard(
-                      onAddGoal: _navigateToAddGoal,
-                      onCheckIn: _openCheckin,
-                      onViewGoals: _openGoalList,
-                      onViewRewards: _openWishlist,
+          : selectedChild == null
+              ? _buildNoChildView()
+              : _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: () => _loadData(showLoader: false),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _StatisticsCard(
+                              todayPoints: _todayPoints,
+                              weekPoints: _weekPoints,
+                              totalPoints: _totalPoints,
+                              animation: _pointsAnimation,
+                            ),
+                            _QuickActions(
+                              onAddGoal: _openAddGoal,
+                              onCheckin: _openCheckin,
+                              onManageGoal: _openGoalList,
+                              onViewRewards: _openWishlist,
+                            ),
+                            _TodayGoalsSection(
+                              goals: _todayGoals,
+                              checkedGoals: _checkedGoals,
+                              onToggleGoal: (index) {
+                                setState(() {
+                                  _checkedGoals[index] = !_checkedGoals[index];
+                                });
+                                if (_checkedGoals[index]) {
+                                  _addPointsForGoal(_todayGoals[index]);
+                                }
+                              },
+                              onManageGoal: _openGoalList,
+                            ),
+                            _WishlistPreview(
+                              rewards: _wishlistPreview,
+                              onViewMore: _openWishlist,
+                            ),
+                            const _GrowthPreview(),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
                     ),
-                    _StatisticsCard(
-                      totalPoints: _totalPoints,
-                      pointsAnimation: _pointsAnimation,
-                    ),
-                    _TodayGoalsSection(
-                      goals: _todayGoals,
-                      checkedGoals: _checkedGoals,
-                      onToggleGoal: _toggleGoal,
-                      onManageGoals: _openGoalList,
-                    ),
-                    _WishlistPreviewCard(
-                      rewards: _wishlistPreview,
-                      onViewMore: _openWishlist,
-                    ),
-                    const _GrowthChartPreview(),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
+      floatingActionButton: selectedChild == null
+          ? null
+          : FloatingActionButton(
+              onPressed: _openAddGoal,
+              child: const Icon(Icons.add),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToAddGoal,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 }
 
-class _UserGuideCard extends StatelessWidget {
-  const _UserGuideCard({
-    required this.onAddGoal,
-    required this.onCheckIn,
-    required this.onViewGoals,
-    required this.onViewRewards,
+class _StatisticsCard extends StatelessWidget {
+  const _StatisticsCard({
+    required this.todayPoints,
+    required this.weekPoints,
+    required this.totalPoints,
+    this.animation,
   });
 
-  final VoidCallback onAddGoal;
-  final VoidCallback onCheckIn;
-  final VoidCallback onViewGoals;
-  final VoidCallback onViewRewards;
+  final int todayPoints;
+  final int weekPoints;
+  final int totalPoints;
+  final Animation<int>? animation;
 
   @override
   Widget build(BuildContext context) {
@@ -249,113 +347,15 @@ class _UserGuideCard extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '使用指南',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            const _GuideStep(
-              icon: Icons.flag,
-              text: '制定每日/每周目标，明确孩子需要完成的任务。',
-            ),
-            const SizedBox(height: 8),
-            const _GuideStep(
-              icon: Icons.check_circle_outline,
-              text: '使用打卡记录孩子完成情况，系统自动累计积分。',
-            ),
-            const SizedBox(height: 8),
-            const _GuideStep(
-              icon: Icons.card_giftcard,
-              text: '积分可兑换心愿奖励，帮助孩子保持长期动力。',
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                FilledButton.tonal(
-                  onPressed: onAddGoal,
-                  child: const Text('添加目标'),
-                ),
-                FilledButton.tonal(
-                  onPressed: onCheckIn,
-                  child: const Text('去打卡'),
-                ),
-                FilledButton.tonal(
-                  onPressed: onViewGoals,
-                  child: const Text('管理目标'),
-                ),
-                FilledButton.tonal(
-                  onPressed: onViewRewards,
-                  child: const Text('心愿与奖励'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GuideStep extends StatelessWidget {
-  const _GuideStep({
-    required this.icon,
-    required this.text,
-  });
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: primary),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 14),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatisticsCard extends StatelessWidget {
-  const _StatisticsCard({
-    required this.totalPoints,
-    this.pointsAnimation,
-  });
-
-  final int totalPoints;
-  final Animation<int>? pointsAnimation;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            const _StatItem(title: '今日积分', value: '20'),
-            const _StatItem(title: '本周积分', value: '120'),
+            _StatItem(title: '今日积分', value: todayPoints.toString()),
+            _StatItem(title: '本周积分', value: weekPoints.toString()),
             _AnimatedStatItem(
               title: '总积分',
               value: totalPoints,
-              animation: pointsAnimation,
+              animation: animation,
             ),
           ],
         ),
@@ -376,10 +376,7 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         Text(
           title,
@@ -403,22 +400,18 @@ class _AnimatedStatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = const TextStyle(
-      fontSize: 24,
-      fontWeight: FontWeight.bold,
-    );
-
+    final style = const TextStyle(fontSize: 24, fontWeight: FontWeight.bold);
     return Column(
       children: [
-        animation != null
-            ? AnimatedBuilder(
+        animation == null
+            ? Text(value.toString(), style: style)
+            : AnimatedBuilder(
                 animation: animation!,
                 builder: (context, child) => Text(
                   animation!.value.toString(),
-                  style: textStyle,
+                  style: style,
                 ),
-              )
-            : Text(value.toString(), style: textStyle),
+              ),
         Text(
           title,
           style: const TextStyle(fontSize: 14, color: Colors.grey),
@@ -428,18 +421,49 @@ class _AnimatedStatItem extends StatelessWidget {
   }
 }
 
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.onAddGoal,
+    required this.onCheckin,
+    required this.onManageGoal,
+    required this.onViewRewards,
+  });
+
+  final VoidCallback onAddGoal;
+  final VoidCallback onCheckin;
+  final VoidCallback onManageGoal;
+  final VoidCallback onViewRewards;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          FilledButton.tonal(onPressed: onAddGoal, child: const Text('添加目标')),
+          FilledButton.tonal(onPressed: onManageGoal, child: const Text('管理目标')),
+          FilledButton.tonal(onPressed: onCheckin, child: const Text('去打卡')),
+          FilledButton.tonal(onPressed: onViewRewards, child: const Text('心愿奖励')),
+        ],
+      ),
+    );
+  }
+}
+
 class _TodayGoalsSection extends StatelessWidget {
   const _TodayGoalsSection({
     required this.goals,
     required this.checkedGoals,
     required this.onToggleGoal,
-    required this.onManageGoals,
+    required this.onManageGoal,
   });
 
   final List<Goal> goals;
   final List<bool> checkedGoals;
   final ValueChanged<int> onToggleGoal;
-  final VoidCallback onManageGoals;
+  final VoidCallback onManageGoal;
 
   @override
   Widget build(BuildContext context) {
@@ -455,18 +479,23 @@ class _TodayGoalsSection extends StatelessWidget {
                 '今日目标',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              TextButton(
-                onPressed: onManageGoals,
-                child: const Text('管理目标'),
-              ),
+              TextButton(onPressed: onManageGoal, child: const Text('管理目标')),
             ],
           ),
           const SizedBox(height: 8),
           if (goals.isEmpty)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('今天还没有待完成的目标，赶紧添加一个吧！'),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('今天还没有待完成的目标'),
+                    SizedBox(height: 4),
+                    Text('试着添加一个新的任务，让孩子开启有序的一天。',
+                        style: TextStyle(color: Colors.grey)),
+                  ],
+                ),
               ),
             )
           else
@@ -502,15 +531,15 @@ class _GoalItem extends StatelessWidget {
         value: isChecked,
         onChanged: (_) => onChanged(),
         title: Text(goal.title),
-        subtitle: Text(goal.description),
+        subtitle: goal.description.isNotEmpty ? Text(goal.description) : null,
         secondary: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            '+${goal.points} 分',
+            '+${goal.points}分',
             style: TextStyle(
               color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.bold,
@@ -522,8 +551,8 @@ class _GoalItem extends StatelessWidget {
   }
 }
 
-class _WishlistPreviewCard extends StatelessWidget {
-  const _WishlistPreviewCard({
+class _WishlistPreview extends StatelessWidget {
+  const _WishlistPreview({
     required this.rewards,
     required this.onViewMore,
   });
@@ -544,18 +573,15 @@ class _WishlistPreviewCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  '心愿库',
+                  '心愿预览',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                TextButton(
-                  onPressed: onViewMore,
-                  child: const Text('查看更多'),
-                ),
+                TextButton(onPressed: onViewMore, child: const Text('查看全部')),
               ],
             ),
             const SizedBox(height: 8),
             if (rewards.isEmpty)
-              const Text('暂无心愿，添加一些孩子期待的奖励，更有动力哦！')
+              const Text('还没有心愿奖励，快去添加一个激励孩子吧。')
             else
               ...rewards.map(
                 (reward) => ListTile(
@@ -563,7 +589,7 @@ class _WishlistPreviewCard extends StatelessWidget {
                   title: Text(reward.title),
                   subtitle: Text(reward.description),
                   trailing: Text(
-                    '${reward.pointsRequired} 分',
+                    '${reward.pointsRequired}分',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.orange,
@@ -578,8 +604,8 @@ class _WishlistPreviewCard extends StatelessWidget {
   }
 }
 
-class _GrowthChartPreview extends StatelessWidget {
-  const _GrowthChartPreview();
+class _GrowthPreview extends StatelessWidget {
+  const _GrowthPreview();
 
   @override
   Widget build(BuildContext context) {
@@ -598,11 +624,11 @@ class _GrowthChartPreview extends StatelessWidget {
             Container(
               height: 150,
               decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.08),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Center(
-                child: Text('数据统计图表即将上线'),
+                child: Text('更多统计功能开发中'),
               ),
             ),
           ],

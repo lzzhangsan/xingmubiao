@@ -1,138 +1,88 @@
+﻿import 'package:xingmubiao/src/models/checkin.dart';
 import 'package:xingmubiao/src/models/goal.dart';
-import 'package:xingmubiao/src/models/checkin.dart';
 import 'package:xingmubiao/src/models/point.dart';
 import 'package:xingmubiao/src/models/reward.dart';
 import 'package:xingmubiao/src/models/user.dart';
-import 'package:xingmubiao/src/services/goal_service.dart';
 import 'package:xingmubiao/src/services/checkin_service.dart';
+import 'package:xingmubiao/src/services/goal_service.dart';
 import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:xingmubiao/src/services/reward_service.dart';
+import 'package:xingmubiao/src/services/user_service.dart';
 
 class DataRepository {
-  // 单例模式
-  static final DataRepository _instance = DataRepository._internal();
-  factory DataRepository() => _instance;
   DataRepository._internal();
 
-  // 目标相关操作
-  Future<List<Goal>> getGoals() async {
-    return await GoalService.getGoals();
-  }
+  static final DataRepository _instance = DataRepository._internal();
 
-  Future<Goal> addGoal(Goal goal) async {
-    return await GoalService.addGoal(goal);
-  }
+  factory DataRepository() => _instance;
 
-  Future<void> updateGoal(Goal goal) async {
-    await GoalService.updateGoal(goal);
-  }
+  Future<List<Goal>> getGoals() => GoalService.getGoals();
 
-  Future<void> deleteGoal(String goalId) async {
-    await GoalService.deleteGoal(goalId);
-  }
+  Future<List<Goal>> getGoalsForChild(String childId) =>
+      GoalService.getGoalsForChild(childId);
 
-  // 打卡相关操作
-  Future<List<Checkin>> getCheckins() async {
-    return await CheckinService.getCheckins();
-  }
+  Future<Goal> addGoal(Goal goal) => GoalService.addGoal(goal);
 
-  Future<List<Checkin>> getCheckinsByGoal(String goalId) async {
-    return await CheckinService.getCheckinsByGoal(goalId);
-  }
+  Future<void> updateGoal(Goal goal) => GoalService.updateGoal(goal);
 
-  Future<List<Checkin>> getCheckinsByDate(DateTime date) async {
-    return await CheckinService.getCheckinsByDate(date);
-  }
+  Future<void> deleteGoal(String goalId) => GoalService.deleteGoal(goalId);
 
-  Future<Checkin> addCheckin(Checkin checkin) async {
-    return await CheckinService.addCheckin(checkin);
-  }
+  Future<List<Checkin>> getCheckins() => CheckinService.getCheckins();
 
-  Future<void> updateCheckin(Checkin checkin) async {
-    await CheckinService.updateCheckin(checkin);
-  }
+  Future<List<Checkin>> getCheckinsForChild(String childId) =>
+      CheckinService.getCheckinsForChild(childId);
 
-  Future<void> deleteCheckin(String checkinId) async {
-    await CheckinService.deleteCheckin(checkinId);
-  }
+  Future<List<Checkin>> getCheckinsForChildByDate(
+    String childId,
+    DateTime date,
+  ) =>
+      CheckinService.getCheckinsForChildByDate(childId, date);
 
-  // 积分相关操作
-  Future<List<Point>> getPoints() async {
-    return await PointService.getPoints();
-  }
+  Future<Checkin> addCheckin(Checkin checkin) =>
+      CheckinService.addCheckin(checkin);
 
-  Future<List<Point>> getPointsByUser(String userId) async {
-    return await PointService.getPointsByUser(userId);
-  }
+  Future<void> updateCheckin(Checkin checkin) =>
+      CheckinService.updateCheckin(checkin);
 
-  Future<int> getTotalPoints(String userId) async {
-    return await PointService.getTotalPoints(userId);
-  }
+  Future<void> deleteCheckin(String checkinId) =>
+      CheckinService.deleteCheckin(checkinId);
 
-  Future<Point> addPoint(Point point) async {
-    return await PointService.addPoint(point);
-  }
+  Future<List<Point>> getPoints() => PointService.getPoints();
 
-  Future<void> updatePoint(Point point) async {
-    await PointService.updatePoint(point);
-  }
+  Future<List<Point>> getPointsByUser(String userId) =>
+      PointService.getPointsByUser(userId);
 
-  Future<void> deletePoint(String pointId) async {
-    await PointService.deletePoint(pointId);
-  }
+  Future<int> getTotalPoints(String userId) =>
+      PointService.getTotalPoints(userId);
 
-  // 心愿相关操作
-  Future<List<Reward>> getRewards() async {
-    return await RewardService.getRewards();
-  }
+  Future<Point> addPoint(Point point) => PointService.addPoint(point);
 
-  Future<Reward> addReward(Reward reward) async {
-    return await RewardService.addReward(reward);
-  }
+  Future<void> updatePoint(Point point) => PointService.updatePoint(point);
 
-  Future<void> updateReward(Reward reward) async {
-    await RewardService.updateReward(reward);
-  }
+  Future<void> deletePoint(String pointId) =>
+      PointService.deletePoint(pointId);
 
-  Future<void> deleteReward(String rewardId) async {
-    await RewardService.deleteReward(rewardId);
-  }
+  Future<List<Reward>> getRewards() => RewardService.getRewards();
 
-  // 用户相关操作
+  Future<Reward> addReward(Reward reward) => RewardService.addReward(reward);
+
+  Future<void> updateReward(Reward reward) =>
+      RewardService.updateReward(reward);
+
+  Future<void> deleteReward(String rewardId) =>
+      RewardService.deleteReward(rewardId);
+
   Future<List<User>> getUsers() async {
-    // 这里应该从用户服务获取用户列表
-    // 暂时返回模拟数据
-    return [
-      User(
-        id: 'parent1',
-        name: '爸爸',
-        email: 'parent@example.com',
-        role: 'parent',
-        avatarUrl: '',
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      ),
-      User(
-        id: 'child1',
-        name: '小明',
-        email: 'child@example.com',
-        role: 'child',
-        avatarUrl: '',
-        createdAt: DateTime.now().subtract(const Duration(days: 365)),
-      ),
-    ];
+    await UserService.ensureDefaultUsers();
+    return UserService.getUsers();
   }
 
   Future<User> addUser(User user) async {
-    // 这里应该调用用户服务添加用户
-    // 暂时直接返回用户
+    await UserService.addUser(user);
     return user;
   }
 
-  Future<void> updateUser(User user) async {
-    // 这里应该调用用户服务更新用户
-  }
+  Future<void> updateUser(User user) => UserService.updateUser(user);
 
-  Future<void> deleteUser(String userId) async {
-    // 这里应该调用用户服务删除用户
-  }
+  Future<void> deleteUser(String userId) => UserService.deleteUser(userId);
 }

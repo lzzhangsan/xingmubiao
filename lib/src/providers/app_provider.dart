@@ -1,86 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:xingmubiao/src/models/user.dart';
+import 'package:xingmubiao/src/services/user_service.dart';
+import 'package:xingmubiao/src/storage/local_data_store.dart';
 
 class AppProvider with ChangeNotifier {
-  // 当前用户
-  User? _currentUser;
-  
-  // 当前选中的孩子
-  User? _selectedChild;
-  
-  // 用户列表
+  AppProvider() {
+    _init();
+  }
+
+  static const _selectedChildKey = 'selected_child_id';
+
   List<User> _users = [];
-  
-  // 积分余额
-  int _pointsBalance = 0;
-  
-  // 通知设置
-  bool _notificationsEnabled = true;
-  bool _remindersEnabled = true;
-  
-  // 获取当前用户
-  User? get currentUser => _currentUser;
-  
-  // 获取当前选中的孩子
-  User? get selectedChild => _selectedChild;
-  
-  // 获取用户列表
+  String? _selectedChildId;
+  bool _initialized = false;
+
   List<User> get users => _users;
-  
-  // 获取积分余额
-  int get pointsBalance => _pointsBalance;
-  
-  // 获取通知设置
-  bool get notificationsEnabled => _notificationsEnabled;
-  bool get remindersEnabled => _remindersEnabled;
-  
-  // 设置当前用户
-  void setCurrentUser(User user) {
-    _currentUser = user;
-    notifyListeners();
-  }
-  
-  // 设置选中的孩子
-  void setSelectedChild(User child) {
-    _selectedChild = child;
-    notifyListeners();
-  }
-  
-  // 设置用户列表
-  void setUsers(List<User> users) {
-    _users = users;
-    notifyListeners();
-  }
-  
-  // 更新积分余额
-  void updatePointsBalance(int balance) {
-    _pointsBalance = balance;
-    notifyListeners();
-  }
-  
-  // 更新通知设置
-  void updateNotificationSettings({
-    bool? notificationsEnabled,
-    bool? remindersEnabled,
-  }) {
-    if (notificationsEnabled != null) {
-      _notificationsEnabled = notificationsEnabled;
+
+  List<User> get children =>
+      _users.where((user) => user.role == 'child').toList();
+
+  User? get selectedChild {
+    if (_selectedChildId == null) return null;
+    try {
+      return children.firstWhere((child) => child.id == _selectedChildId);
+    } catch (_) {
+      return children.isNotEmpty ? children.first : null;
     }
-    if (remindersEnabled != null) {
-      _remindersEnabled = remindersEnabled;
+  }
+
+  bool get isInitialized => _initialized;
+
+  Future<void> _init() async {
+    await UserService.ensureDefaultUsers();
+    await _loadUsers();
+    await _loadSelectedChild();
+    _initialized = true;
+    notifyListeners();
+  }
+
+  Future<void> _loadUsers() async {
+    _users = await UserService.getUsers();
+  }
+
+  Future<void> _loadSelectedChild() async {
+    final savedId = await LocalDataStore.getString(_selectedChildKey);
+    final childExists = savedId != null &&
+        children.any((child) => child.id == savedId);
+    if (childExists) {
+      _selectedChildId = savedId;
+    } else if (children.isNotEmpty) {
+      _selectedChildId = children.first.id;
+      await LocalDataStore.setString(_selectedChildKey, _selectedChildId!);
+    } else {
+      _selectedChildId = null;
     }
+  }
+
+  Future<void> refreshUsers() async {
+    await _loadUsers();
+    await _loadSelectedChild();
     notifyListeners();
   }
-  
-  // 添加用户
-  void addUser(User user) {
-    _users.add(user);
+
+  Future<void> setSelectedChildId(String childId) async {
+    if (_selectedChildId == childId) return;
+    _selectedChildId = childId;
+    await LocalDataStore.setString(_selectedChildKey, childId);
     notifyListeners();
   }
-  
-  // 删除用户
-  void removeUser(String userId) {
-    _users.removeWhere((user) => user.id == userId);
-    notifyListeners();
+
+  Future<void> addUser(User user) async {
+    await UserService.addUser(user);
+    await refreshUsers();
+    if (user.role == 'child') {
+      await setSelectedChildId(user.id);
+    }
+  }
+
+  Future<void> removeUser(String userId) async {
+    await UserService.deleteUser(userId);
+    await refreshUsers();
   }
 }

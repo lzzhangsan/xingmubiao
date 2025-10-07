@@ -1,9 +1,13 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/models/point.dart';
 import 'package:xingmubiao/src/models/reward.dart';
+import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/add_reward_screen.dart';
+import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:xingmubiao/src/services/reward_service.dart';
+import 'package:xingmubiao/src/widgets/child_selector.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -16,33 +20,83 @@ class _WishlistScreenState extends State<WishlistScreen> {
   List<Reward> _rewards = [];
   int _userPoints = 0;
   bool _isLoading = true;
+  bool _isFetching = false;
+
+  AppProvider? _provider;
+  String? _currentChildId;
 
   @override
-  void initState() {
-    super.initState();
-    _loadData();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = Provider.of<AppProvider>(context);
+    if (_provider != provider) {
+      _provider?.removeListener(_handleProviderChanged);
+      _provider = provider;
+      provider.addListener(_handleProviderChanged);
+      _handleProviderChanged();
+    }
   }
 
-  Future<void> _loadData() async {
-    try {
+  @override
+  void dispose() {
+    _provider?.removeListener(_handleProviderChanged);
+    super.dispose();
+  }
+
+  void _handleProviderChanged() {
+    final provider = _provider;
+    if (provider == null || !provider.isInitialized) return;
+    final newChildId = provider.selectedChild?.id;
+    if (newChildId != _currentChildId) {
+      _currentChildId = newChildId;
+      _loadData();
+    }
+  }
+
+  Future<void> _loadData({bool showLoader = true}) async {
+    final provider = _provider;
+    if (provider == null || !provider.isInitialized) return;
+    final child = provider.selectedChild;
+    if (child == null) {
+      setState(() {
+        _rewards = [];
+        _userPoints = 0;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (_isFetching) return;
+    _isFetching = true;
+
+    if (showLoader) {
       setState(() => _isLoading = true);
+    }
+
+    try {
       final rewards = await RewardService.getRewards();
-      final points = await PointService.getTotalPoints('child1');
+      final points = await PointService.getTotalPoints(child.id);
+      if (!mounted) return;
       setState(() {
         _rewards = rewards;
         _userPoints = points;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
       if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('加载数据失败：$e')),
+        SnackBar(content: Text('加载心愿数据失败: $e')),
       );
+    } finally {
+      _isFetching = false;
     }
   }
 
   Future<void> _redeemReward(Reward reward) async {
+    final child = _provider?.selectedChild;
+    if (child == null) return;
+
     if (_userPoints < reward.pointsRequired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -56,7 +110,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
     try {
       final record = Point(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: 'child1',
+        userId: child.id,
         amount: reward.pointsRequired,
         reason: '兑换奖励：${reward.title}',
         type: 'spent',
@@ -65,21 +119,16 @@ class _WishlistScreenState extends State<WishlistScreen> {
       );
       await PointService.addPoint(record);
 
-      setState(() {
-        _userPoints -= reward.pointsRequired;
-      });
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('兑换成功！快去兑现“${reward.title}”的奖励吧。'),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text('兑换成功，已扣除 ${reward.pointsRequired} 积分')),
       );
+
+      await _loadData(showLoader: false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('记录积分失败：$e')),
+        SnackBar(content: Text('记录积分失败: $e')),
       );
     }
   }
@@ -87,40 +136,36 @@ class _WishlistScreenState extends State<WishlistScreen> {
   Future<void> _openRewardEditor({Reward? reward}) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddRewardScreen(initialReward: reward),
-      ),
+      MaterialPageRoute(builder: (_) => AddRewardScreen(initialReward: reward)),
     );
     if (result == true) {
-      await _loadData();
+      await _loadData(showLoader: false);
     }
   }
 
   void _deleteReward(Reward reward) {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: Text('确定要删除心愿“${reward.title}”吗？'),
+        title: const Text('删除心愿'),
+        content: Text('确定要删除“${reward.title}”吗？'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: () => navigator.pop(), child: const Text('取消')),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              navigator.pop();
               try {
                 await RewardService.deleteReward(reward.id);
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('删除成功')),
-                );
-                await _loadData();
+                messenger.showSnackBar(const SnackBar(content: Text('删除成功')));
+                await _loadData(showLoader: false);
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('删除失败：$e')),
+                messenger.showSnackBar(
+                  SnackBar(content: Text('删除失败: $e')),
                 );
               }
             },
@@ -131,207 +176,181 @@ class _WishlistScreenState extends State<WishlistScreen> {
     );
   }
 
+  Widget _buildNoChildView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.child_care_outlined, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text('还没有孩子成员，无法管理心愿'),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const UserManagementScreen(),
+                  ),
+                );
+              },
+              child: const Text('前往成员管理'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final selectedChild = provider.selectedChild;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('心愿与奖励'),
+        title: const Text('心愿奖励'),
         actions: [
+          const ChildSelector(),
           IconButton(
-            tooltip: '新增奖励',
             icon: const Icon(Icons.add),
+            tooltip: '新增奖励',
             onPressed: () => _openRewardEditor(),
           ),
         ],
       ),
-      body: _isLoading
+      body: !provider.isInitialized
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _PointsSummary(points: _userPoints),
-                  const SizedBox(height: 16),
-                  if (_rewards.isEmpty)
-                    const _EmptyRewardPlaceholder()
-                  else
-                    ..._rewards.map(
-                      (reward) => _RewardCard(
-                        reward: reward,
-                        canRedeem: _userPoints >= reward.pointsRequired,
-                        onRedeem: () => _redeemReward(reward),
-                        onEdit: () => _openRewardEditor(reward: reward),
-                        onDelete: () => _deleteReward(reward),
+          : selectedChild == null
+              ? _buildNoChildView()
+              : _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : RefreshIndicator(
+                      onRefresh: () => _loadData(showLoader: false),
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${selectedChild.name} 当前可用积分',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '$_userPoints 分',
+                                        style: const TextStyle(
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                      const Icon(Icons.savings_outlined,
+                                          size: 32, color: Colors.blue),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text('完成目标后将自动累积积分，可在此兑换心愿奖励。'),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (_rewards.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Center(child: Text('还没有设置心愿，点击右上角添加吧。')),
+                            )
+                          else
+                            ..._rewards.map(
+                              (reward) => Card(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  reward.title,
+                                                  style: const TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Text(reward.description),
+                                              ],
+                                            ),
+                                          ),
+                                          PopupMenuButton<String>(
+                                            onSelected: (value) {
+                                              if (value == 'edit') {
+                                                _openRewardEditor(reward: reward);
+                                              } else if (value == 'delete') {
+                                                _deleteReward(reward);
+                                              }
+                                            },
+                                            itemBuilder: (context) => const [
+                                              PopupMenuItem(
+                                                value: 'edit',
+                                                child: Text('编辑'),
+                                              ),
+                                              PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text('删除'),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            '${reward.pointsRequired} 分',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.orange,
+                                            ),
+                                          ),
+                                          FilledButton(
+                                            onPressed: () => _redeemReward(reward),
+                                            child: Text(
+                                              _userPoints >= reward.pointsRequired
+                                                  ? '立即兑换'
+                                                  : '积分不足',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                ],
-              ),
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openRewardEditor(),
-        icon: const Icon(Icons.add),
-        label: const Text('添加心愿'),
-      ),
-    );
-  }
-}
-
-class _PointsSummary extends StatelessWidget {
-  const _PointsSummary({required this.points});
-
-  final int points;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '当前积分',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$points 分',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-                const Icon(Icons.savings_outlined, size: 32, color: Colors.blue),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Text('孩子完成目标后将获得积分，可在这里兑换心愿奖励。'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RewardCard extends StatelessWidget {
-  const _RewardCard({
-    required this.reward,
-    required this.canRedeem,
-    required this.onRedeem,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final Reward reward;
-  final bool canRedeem;
-  final VoidCallback onRedeem;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        reward.title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(reward.description),
-                    ],
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      onEdit();
-                    } else if (value == 'delete') {
-                      onDelete();
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Text('编辑'),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text('删除'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '${reward.pointsRequired} 分',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.orange,
-                  ),
-                ),
-                FilledButton(
-                  onPressed: canRedeem ? onRedeem : null,
-                  child: Text(canRedeem ? '立即兑换' : '积分不足'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyRewardPlaceholder extends StatelessWidget {
-  const _EmptyRewardPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: const [
-            Icon(Icons.card_giftcard_outlined, size: 48, color: Colors.grey),
-            SizedBox(height: 12),
-            Text(
-              '暂未设置任何心愿',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '把孩子的期望记录在这里，完成目标就能兑换，激励效果翻倍。',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

@@ -1,67 +1,62 @@
-import 'package:xingmubiao/src/models/goal.dart';
+﻿import 'package:xingmubiao/src/models/goal.dart';
+import 'package:xingmubiao/src/storage/local_data_store.dart';
 
 class GoalService {
-  // 模拟数据，真实项目中可替换为接口或本地数据库
-  static final List<Goal> _goals = [
-    Goal(
-      id: '1',
-      title: '阅读 30 分钟',
-      description: '每天坚持阅读半小时，培养持续专注力。',
-      categoryId: 'learning',
-      userId: 'user1',
-      assignedTo: const ['child1'],
-      points: 10,
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-      frequency: 'daily',
-      type: 'habit',
-    ),
-    Goal(
-      id: '2',
-      title: '整理书桌',
-      description: '学习结束后整理书桌，让学习环境更舒适。',
-      categoryId: 'life',
-      userId: 'user1',
-      assignedTo: const ['child1'],
-      points: 5,
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      frequency: 'daily',
-      type: 'habit',
-    ),
-    Goal(
-      id: '3',
-      title: '完成数学作业',
-      description: '按时完成当天布置的所有数学练习题。',
-      categoryId: 'learning',
-      userId: 'user1',
-      assignedTo: const ['child1'],
-      points: 15,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      frequency: 'daily',
-      type: 'task',
-    ),
-  ];
+  static const _storageKey = 'goals';
+  static List<Goal> _cache = [];
+  static bool _loaded = false;
+
+  static Future<void> _ensureLoaded() async {
+    if (_loaded) return;
+    final data = await LocalDataStore.loadList(_storageKey);
+    _cache = data.map(Goal.fromJson).toList();
+    _loaded = true;
+  }
+
+  static Future<void> _persist() async {
+    await LocalDataStore.saveList(
+      _storageKey,
+      _cache.map((goal) => goal.toJson()).toList(),
+    );
+  }
 
   static Future<List<Goal>> getGoals() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    return List<Goal>.from(_goals);
+    await _ensureLoaded();
+    return List<Goal>.from(_cache);
+  }
+
+  static Future<List<Goal>> getGoalsForChild(String childId) async {
+    await _ensureLoaded();
+    return _cache
+        .where((goal) => goal.assignedTo.contains(childId))
+        .toList();
   }
 
   static Future<Goal> addGoal(Goal goal) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    _goals.add(goal);
+    await _ensureLoaded();
+    _cache.add(goal);
+    await _persist();
     return goal;
   }
 
   static Future<void> updateGoal(Goal goal) async {
-    await Future.delayed(const Duration(milliseconds: 250));
-    final index = _goals.indexWhere((g) => g.id == goal.id);
+    await _ensureLoaded();
+    final index = _cache.indexWhere((g) => g.id == goal.id);
     if (index != -1) {
-      _goals[index] = goal;
+      _cache[index] = goal;
+      await _persist();
     }
   }
 
   static Future<void> deleteGoal(String goalId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    _goals.removeWhere((g) => g.id == goalId);
+    await _ensureLoaded();
+    _cache.removeWhere((g) => g.id == goalId);
+    await _persist();
+  }
+
+  static Future<void> clear() async {
+    _cache = [];
+    _loaded = true;
+    await _persist();
   }
 }

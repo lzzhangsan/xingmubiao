@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/models/goal.dart';
+import 'package:xingmubiao/src/models/user.dart';
+import 'package:xingmubiao/src/providers/app_provider.dart';
+import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
 
 class AddGoalScreen extends StatefulWidget {
@@ -42,6 +46,8 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
   late String _selectedCategoryId;
   late String _frequency;
   late String _type;
+  Set<String> _assignedChildIds = {};
+  bool _assignedInitialized = false;
 
   @override
   void initState() {
@@ -57,6 +63,29 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_assignedInitialized) return;
+    final provider = context.read<AppProvider>();
+    final Goal? goal = widget.initialGoal;
+
+    if (goal != null && goal.assignedTo.isNotEmpty) {
+      _assignedChildIds = goal.assignedTo.toSet();
+    } else {
+      final selected = provider.selectedChild;
+      if (selected != null) {
+        _assignedChildIds = {selected.id};
+      }
+    }
+
+    if (_assignedChildIds.isEmpty && provider.children.isNotEmpty) {
+      _assignedChildIds = {provider.children.first.id};
+    }
+
+    _assignedInitialized = true;
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
@@ -65,7 +94,12 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
   }
 
   Future<void> _submitGoal() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_assignedChildIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请至少选择一个孩子')),
+      );
       return;
     }
 
@@ -76,8 +110,8 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         categoryId: _selectedCategoryId,
-        userId: existing?.userId ?? 'user1',
-        assignedTo: existing?.assignedTo ?? const ['child1'],
+        userId: existing?.userId ?? 'parent',
+        assignedTo: _assignedChildIds.toList(),
         points: int.parse(_pointsController.text),
         createdAt: existing?.createdAt ?? DateTime.now(),
         startDate: existing?.startDate,
@@ -95,21 +129,22 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(widget.isEditing ? '目标更新成功' : '目标添加成功'),
-        ),
+        SnackBar(content: Text(widget.isEditing ? '目标已更新' : '目标已创建')),
       );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败：$e')),
+        SnackBar(content: Text('保存失败: $e')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
+    final List<User> children = provider.children;
+    final hasChildren = children.isNotEmpty;
     final title = widget.isEditing ? '编辑目标' : '新增目标';
 
     return Scaffold(
@@ -119,7 +154,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
           IconButton(
             tooltip: '保存',
             icon: const Icon(Icons.save),
-            onPressed: _submitGoal,
+            onPressed: hasChildren ? _submitGoal : null,
           ),
         ],
       ),
@@ -148,7 +183,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                 controller: _descriptionController,
                 decoration: const InputDecoration(
                   labelText: '目标说明',
-                  hintText: '补充目标的具体要求或备注',
+                  hintText: '可选，填写目标要求或注意事项',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -164,75 +199,92 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '请填写奖励积分';
+                    return '请输入积分';
                   }
                   final parsed = int.tryParse(value);
                   if (parsed == null || parsed <= 0) {
-                    return '请输入大于 0 的整数';
+                    return '请输入正整数';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 24),
-              _SectionTitle('类别'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _categories.map((category) {
-                  final isSelected = _selectedCategoryId == category['id'];
-                  return ChoiceChip(
-                    label: Text(category['name']!),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategoryId =
-                            selected ? category['id']! : _selectedCategoryId;
-                      });
-                    },
-                  );
-                }).toList(),
+              _buildChoiceSection(
+                title: '类别',
+                options: _categories,
+                selectedId: _selectedCategoryId,
+                onSelected: (id) => setState(() => _selectedCategoryId = id),
               ),
               const SizedBox(height: 24),
-              _SectionTitle('频率'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _frequencies.map((frequency) {
-                  final isSelected = _frequency == frequency['value'];
-                  return ChoiceChip(
-                    label: Text(frequency['name']!),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _frequency = selected ? frequency['value']! : _frequency;
-                      });
-                    },
-                  );
-                }).toList(),
+              _buildChoiceSection(
+                title: '频率',
+                options: _frequencies,
+                selectedId: _frequency,
+                onSelected: (value) => setState(() => _frequency = value),
               ),
               const SizedBox(height: 24),
-              _SectionTitle('类型'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _types.map((type) {
-                  final isSelected = _type == type['value'];
-                  return ChoiceChip(
-                    label: Text(type['name']!),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _type = selected ? type['value']! : _type;
-                      });
-                    },
-                  );
-                }).toList(),
+              _buildChoiceSection(
+                title: '类型',
+                options: _types,
+                selectedId: _type,
+                onSelected: (value) => setState(() => _type = value),
               ),
+              const SizedBox(height: 24),
+              Text(
+                '适用孩子',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              if (!hasChildren)
+                Card(
+                  color: Colors.orange[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('当前还没有孩子成员，请先添加'),
+                        const SizedBox(height: 8),
+                        FilledButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const UserManagementScreen(),
+                              ),
+                            );
+                          },
+                          child: const Text('前往成员管理'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: children.map((child) {
+                    final selected = _assignedChildIds.contains(child.id);
+                    return FilterChip(
+                      label: Text(child.name),
+                      selected: selected,
+                      onSelected: (value) {
+                        setState(() {
+                          if (value) {
+                            _assignedChildIds.add(child.id);
+                          } else {
+                            _assignedChildIds.remove(child.id);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _submitGoal,
+                  onPressed: hasChildren ? _submitGoal : null,
                   child: Text(widget.isEditing ? '保存目标' : '添加目标'),
                 ),
               ),
@@ -242,24 +294,37 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
       ),
     );
   }
-}
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
+  Widget _buildChoiceSection({
+    required String title,
+    required List<Map<String, String>> options,
+    required String selectedId,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: options.map((option) {
+            final value = option['id'] ?? option['value']!;
+            final selected = selectedId == value;
+            return ChoiceChip(
+              label: Text(option['name']!),
+              selected: selected,
+              onSelected: (isSelected) {
+                if (isSelected) {
+                  onSelected(value);
+                }
+              },
+            );
+          }).toList(),
         ),
-      ),
+      ],
     );
   }
 }
+

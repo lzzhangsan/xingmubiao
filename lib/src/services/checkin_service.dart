@@ -1,63 +1,89 @@
-import 'package:xingmubiao/src/models/checkin.dart';
+﻿import 'package:xingmubiao/src/models/checkin.dart';
+import 'package:xingmubiao/src/storage/local_data_store.dart';
 
 class CheckinService {
-  // 模拟打卡数据
-  static final List<Checkin> _checkins = [
-    Checkin(
-      id: '1',
-      goalId: '1',
-      userId: 'child1',
-      score: 5,
-      comment: '今天读了一本有趣的书',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Checkin(
-      id: '2',
-      goalId: '2',
-      userId: 'child1',
-      score: 4,
-      comment: '书桌整理得还不错',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
+  static const _storageKey = 'checkins';
+  static List<Checkin> _cache = [];
+  static bool _loaded = false;
+
+  static Future<void> _ensureLoaded() async {
+    if (_loaded) return;
+    final data = await LocalDataStore.loadList(_storageKey);
+    _cache = data.map(Checkin.fromJson).toList();
+    _loaded = true;
+  }
+
+  static Future<void> _persist() async {
+    await LocalDataStore.saveList(
+      _storageKey,
+      _cache.map((checkin) => checkin.toJson()).toList(),
+    );
+  }
 
   static Future<List<Checkin>> getCheckins() async {
-    // 模拟网络延迟
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _checkins;
+    await _ensureLoaded();
+    return List<Checkin>.from(_cache);
+  }
+
+  static Future<List<Checkin>> getCheckinsForChild(String childId) async {
+    await _ensureLoaded();
+    return _cache.where((checkin) => checkin.userId == childId).toList();
+  }
+
+  static Future<List<Checkin>> getCheckinsForChildByDate(
+    String childId,
+    DateTime date,
+  ) async {
+    await _ensureLoaded();
+    return _cache.where((checkin) {
+      if (checkin.userId != childId) return false;
+      final created = checkin.createdAt;
+      return created.year == date.year &&
+          created.month == date.month &&
+          created.day == date.day;
+    }).toList();
   }
 
   static Future<List<Checkin>> getCheckinsByGoal(String goalId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _checkins.where((c) => c.goalId == goalId).toList();
+    await _ensureLoaded();
+    return _cache.where((checkin) => checkin.goalId == goalId).toList();
   }
 
   static Future<List<Checkin>> getCheckinsByDate(DateTime date) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _checkins
-        .where((c) =>
-            c.createdAt.year == date.year &&
-            c.createdAt.month == date.month &&
-            c.createdAt.day == date.day)
-        .toList();
+    await _ensureLoaded();
+    return _cache.where((checkin) {
+      final created = checkin.createdAt;
+      return created.year == date.year &&
+          created.month == date.month &&
+          created.day == date.day;
+    }).toList();
   }
 
   static Future<Checkin> addCheckin(Checkin checkin) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    _checkins.add(checkin);
+    await _ensureLoaded();
+    _cache.add(checkin);
+    await _persist();
     return checkin;
   }
 
   static Future<void> updateCheckin(Checkin checkin) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final index = _checkins.indexWhere((c) => c.id == checkin.id);
+    await _ensureLoaded();
+    final index = _cache.indexWhere((c) => c.id == checkin.id);
     if (index != -1) {
-      _checkins[index] = checkin;
+      _cache[index] = checkin;
+      await _persist();
     }
   }
 
   static Future<void> deleteCheckin(String checkinId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    _checkins.removeWhere((c) => c.id == checkinId);
+    await _ensureLoaded();
+    _cache.removeWhere((checkin) => checkin.id == checkinId);
+    await _persist();
+  }
+
+  static Future<void> clear() async {
+    _cache = [];
+    _loaded = true;
+    await _persist();
   }
 }

@@ -14,7 +14,6 @@ class _FamilyScreenState extends State<FamilyScreen> {
   List<Family> _families = [];
   List<User> _familyMembers = [];
   bool _isLoading = true;
-  String _invitationCode = '';
 
   @override
   void initState() {
