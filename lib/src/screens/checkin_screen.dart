@@ -17,7 +17,6 @@ class _CheckinScreenState extends State<CheckinScreen> {
   DateTime _selectedDate = DateTime.now();
   List<Goal> _goals = [];
   bool _isLoading = true;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {

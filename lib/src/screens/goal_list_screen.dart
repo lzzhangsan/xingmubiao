@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:xingmubiao/src/models/goal.dart';
+import 'package:xingmubiao/src/screens/add_goal_screen.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
 
 class GoalListScreen extends StatefulWidget {
@@ -10,25 +11,17 @@ class GoalListScreen extends StatefulWidget {
 }
 
 class _GoalListScreenState extends State<GoalListScreen> {
-  int _selectedCategoryIndex = 0;
-  List<Goal> _goals = [];
-  bool _isLoading = true;
-
-  final List<String> _categories = [
-    '全部',
-    '学习',
-    '生活',
-    '兴趣',
-    '挑战',
+  final List<Map<String, String>> _categories = const [
+    {'id': 'all', 'name': '全部'},
+    {'id': 'learning', 'name': '学习'},
+    {'id': 'life', 'name': '生活'},
+    {'id': 'interest', 'name': '兴趣'},
+    {'id': 'challenge', 'name': '挑战'},
   ];
 
-  final Map<String, String> _categoryMap = {
-    '全部': '',
-    '学习': 'learning',
-    '生活': 'life',
-    '兴趣': 'interest',
-    '挑战': 'challenge',
-  };
+  String _selectedCategoryId = 'all';
+  List<Goal> _goals = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -38,71 +31,61 @@ class _GoalListScreenState extends State<GoalListScreen> {
 
   Future<void> _loadGoals() async {
     try {
-      setState(() {
-        _isLoading = true;
-      });
-
+      setState(() => _isLoading = true);
       final goals = await GoalService.getGoals();
       setState(() {
         _goals = goals;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载目标失败: $e')),
-        );
-      }
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载目标失败：$e')),
+      );
     }
   }
 
-  void _navigateToAddGoal() {
-    Navigator.pushNamed(context, '/add-goal').then((value) {
-      if (value == true) {
-        _loadGoals(); // 如果添加了新目标，重新加载数据
-      }
-    });
-  }
-
-  void _editGoal(Goal goal) {
-    // 这里应该导航到编辑目标页面
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('编辑功能待实现')),
+  Future<void> _openGoalEditor({Goal? goal}) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddGoalScreen(initialGoal: goal),
+      ),
     );
+    if (!mounted) return;
+    if (result == true) {
+      await _loadGoals();
+    }
   }
 
   void _deleteGoal(Goal goal) {
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
           title: const Text('确认删除'),
-          content: Text('确定要删除目标"${goal.title}"吗？'),
+          content: Text('确定要删除目标“${goal.title}”吗？'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.pop(context),
               child: const Text('取消'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.of(context).pop();
+                Navigator.pop(context);
                 try {
                   await GoalService.deleteGoal(goal.id);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('删除成功')),
-                    );
-                    _loadGoals(); // 重新加载数据
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('删除成功')),
+                  );
+                  await _loadGoals();
                 } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('删除失败: $e')),
-                    );
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('删除失败：$e')),
+                  );
                 }
               },
               child: const Text('删除'),
@@ -115,226 +98,242 @@ class _GoalListScreenState extends State<GoalListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredGoals = _selectedCategoryId == 'all'
+        ? _goals
+        : _goals.where((goal) => goal.categoryId == _selectedCategoryId).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('目标管理'),
         actions: [
           IconButton(
+            tooltip: '添加目标',
             icon: const Icon(Icons.add),
-            onPressed: _navigateToAddGoal,
+            onPressed: () => _openGoalEditor(),
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
+          : RefreshIndicator(
+              onRefresh: _loadGoals,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  // 目标分类标签
-                  _CategoryTabs(
-                    categories: _categories,
-                    selectedIndex: _selectedCategoryIndex,
-                    onCategorySelected: (index) {
-                      setState(() {
-                        _selectedCategoryIndex = index;
-                      });
-                    },
+                  Text(
+                    '为孩子安排学习与生活任务，使用积分激励持续成长。',
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  
-                  // 目标列表
-                  _GoalList(
-                    goals: _goals,
-                    categoryFilter: _categoryMap[_categories[_selectedCategoryIndex]] ?? '',
-                    onEdit: _editGoal,
-                    onDelete: _deleteGoal,
-                  ),
+                  const SizedBox(height: 16),
+                  _buildCategorySelector(),
+                  const SizedBox(height: 16),
+                  if (filteredGoals.isEmpty)
+                    _EmptyGoalPlaceholder(onAddGoal: () => _openGoalEditor())
+                  else
+                    ...filteredGoals.map(
+                      (goal) => _GoalListItem(
+                        goal: goal,
+                        onEdit: () => _openGoalEditor(goal: goal),
+                        onDelete: () => _deleteGoal(goal),
+                      ),
+                    ),
                 ],
               ),
             ),
     );
   }
-}
 
-class _CategoryTabs extends StatelessWidget {
-  final List<String> categories;
-  final int selectedIndex;
-  final Function(int) onCategorySelected;
-
-  const _CategoryTabs({
-    required this.categories,
-    required this.selectedIndex,
-    required this.onCategorySelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          ...categories.asMap().entries.map((entry) => _CategoryTab(
-                title: entry.value,
-                isSelected: entry.key == selectedIndex,
-                onTap: () => onCategorySelected(entry.key),
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryTab extends StatelessWidget {
-  final String title;
-  final bool isSelected;
-  final Function() onTap;
-
-  const _CategoryTab({
-    required this.title,
-    this.isSelected = false,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.all(8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blue : Colors.grey[300],
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.black,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GoalList extends StatelessWidget {
-  final List<Goal> goals;
-  final String categoryFilter;
-  final Function(Goal) onEdit;
-  final Function(Goal) onDelete;
-
-  const _GoalList({
-    required this.goals,
-    required this.categoryFilter,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // 过滤目标
-    List<Goal> filteredGoals = goals;
-    if (categoryFilter.isNotEmpty) {
-      filteredGoals = goals.where((goal) => goal.categoryId == categoryFilter).toList();
-    }
-
-    if (filteredGoals.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text('暂无目标'),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: filteredGoals.length,
-      itemBuilder: (context, index) {
-        final goal = filteredGoals[index];
-        return _GoalListItem(
-          goal: goal,
-          onEdit: () => onEdit(goal),
-          onDelete: () => onDelete(goal),
+  Widget _buildCategorySelector() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _categories.map((category) {
+        final isSelected = _selectedCategoryId == category['id'];
+        return ChoiceChip(
+          label: Text(category['name']!),
+          selected: isSelected,
+          onSelected: (selected) {
+            setState(() {
+              _selectedCategoryId = selected ? category['id']! : 'all';
+            });
+          },
         );
-      },
+      }).toList(),
     );
   }
 }
 
 class _GoalListItem extends StatelessWidget {
-  final Goal goal;
-  final Function() onEdit;
-  final Function() onDelete;
-
   const _GoalListItem({
     required this.goal,
     required this.onEdit,
     required this.onDelete,
   });
 
+  final Goal goal;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  static const Map<String, String> _categoryNames = {
+    'learning': '学习',
+    'life': '生活',
+    'interest': '兴趣',
+    'challenge': '挑战',
+  };
+
+  static const Map<String, String> _frequencyNames = {
+    'daily': '每天',
+    'weekly': '每周',
+    'monthly': '每月',
+    'once': '一次性',
+  };
+
+  static const Map<String, String> _typeNames = {
+    'habit': '习惯',
+    'task': '任务',
+    'challenge': '挑战',
+  };
+
   @override
   Widget build(BuildContext context) {
-    final Map<String, String> categoryNames = {
-      'learning': '学习',
-      'life': '生活',
-      'interest': '兴趣',
-      'challenge': '挑战',
-    };
-
-    final Map<String, String> frequencyNames = {
-      'daily': '每日',
-      'weekly': '每周',
-      'monthly': '每月',
-      'once': '一次',
-    };
-
-    final Map<String, String> typeNames = {
-      'habit': '习惯',
-      'task': '任务',
-      'challenge': '挑战',
-    };
+    final category = _categoryNames[goal.categoryId] ?? goal.categoryId;
+    final frequency = _frequencyNames[goal.frequency] ?? goal.frequency;
+    final type = _typeNames[goal.type] ?? goal.type;
 
     return Card(
-      margin: const EdgeInsets.all(8),
-      child: ListTile(
-        title: Text(goal.title),
-        subtitle: Column(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(goal.description),
-            const SizedBox(height: 4),
-            Text(
-              '${categoryNames[goal.categoryId] ?? goal.categoryId} · ${frequencyNames[goal.frequency] ?? goal.frequency} · ${typeNames[goal.type] ?? goal.type}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        goal.title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        goal.description,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '+${goal.points}积分',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _InfoTag(label: category, icon: Icons.folder),
+                _InfoTag(label: frequency, icon: Icons.calendar_today),
+                _InfoTag(label: type, icon: Icons.bolt),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('编辑'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('删除'),
+                ),
+              ],
             ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      ),
+    );
+  }
+}
+
+class _InfoTag extends StatelessWidget {
+  const _InfoTag({required this.label, required this.icon});
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyGoalPlaceholder extends StatelessWidget {
+  const _EmptyGoalPlaceholder({required this.onAddGoal});
+
+  final VoidCallback onAddGoal;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text('+${goal.points}积分'),
-            PopupMenuButton<String>(
-              onSelected: (String value) {
-                if (value == 'edit') {
-                  onEdit();
-                } else if (value == 'delete') {
-                  onDelete();
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'edit',
-                  child: Text('编辑'),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Text('删除'),
-                ),
-              ],
+            const Icon(Icons.sticky_note_2_outlined, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text(
+              '还没有设置目标',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '制定学习与生活计划，让孩子每天都有清晰的努力方向。',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: onAddGoal,
+              child: const Text('立即添加目标'),
             ),
           ],
         ),

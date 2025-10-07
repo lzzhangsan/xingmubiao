@@ -3,7 +3,11 @@ import 'package:xingmubiao/src/models/goal.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
 
 class AddGoalScreen extends StatefulWidget {
-  const AddGoalScreen({super.key});
+  const AddGoalScreen({super.key, this.initialGoal});
+
+  final Goal? initialGoal;
+
+  bool get isEditing => initialGoal != null;
 
   @override
   State<AddGoalScreen> createState() => _AddGoalScreenState();
@@ -11,32 +15,46 @@ class AddGoalScreen extends StatefulWidget {
 
 class _AddGoalScreenState extends State<AddGoalScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _pointsController = TextEditingController();
-  String _selectedCategory = '学习';
-  String _frequency = 'daily';
-  String _type = 'habit';
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _pointsController;
 
-  final List<Map<String, String>> _categories = [
+  final List<Map<String, String>> _categories = const [
     {'id': 'learning', 'name': '学习'},
     {'id': 'life', 'name': '生活'},
     {'id': 'interest', 'name': '兴趣'},
     {'id': 'challenge', 'name': '挑战'},
   ];
 
-  final List<Map<String, String>> _frequencies = [
-    {'value': 'daily', 'name': '每日'},
+  final List<Map<String, String>> _frequencies = const [
+    {'value': 'daily', 'name': '每天'},
     {'value': 'weekly', 'name': '每周'},
     {'value': 'monthly', 'name': '每月'},
-    {'value': 'once', 'name': '一次'},
+    {'value': 'once', 'name': '一次性'},
   ];
 
-  final List<Map<String, String>> _types = [
+  final List<Map<String, String>> _types = const [
     {'value': 'habit', 'name': '习惯'},
     {'value': 'task', 'name': '任务'},
     {'value': 'challenge', 'name': '挑战'},
   ];
+
+  late String _selectedCategoryId;
+  late String _frequency;
+  late String _type;
+
+  @override
+  void initState() {
+    super.initState();
+    final goal = widget.initialGoal;
+    _titleController = TextEditingController(text: goal?.title ?? '');
+    _descriptionController = TextEditingController(text: goal?.description ?? '');
+    _pointsController =
+        TextEditingController(text: goal != null ? goal.points.toString() : '');
+    _selectedCategoryId = goal?.categoryId ?? 'learning';
+    _frequency = goal?.frequency ?? 'daily';
+    _type = goal?.type ?? 'habit';
+  }
 
   @override
   void dispose() {
@@ -47,47 +65,59 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
   }
 
   Future<void> _submitGoal() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        final goal = Goal(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: _titleController.text,
-          description: _descriptionController.text,
-          categoryId: _categories
-              .firstWhere((category) => category['name'] == _selectedCategory)['id']!,
-          userId: 'user1',
-          assignedTo: ['child1'],
-          points: int.parse(_pointsController.text),
-          createdAt: DateTime.now(),
-          frequency: _frequency,
-          type: _type,
-        );
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
+    try {
+      final existing = widget.initialGoal;
+      final goal = Goal(
+        id: existing?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        categoryId: _selectedCategoryId,
+        userId: existing?.userId ?? 'user1',
+        assignedTo: existing?.assignedTo ?? const ['child1'],
+        points: int.parse(_pointsController.text),
+        createdAt: existing?.createdAt ?? DateTime.now(),
+        startDate: existing?.startDate,
+        endDate: existing?.endDate,
+        isActive: existing?.isActive ?? true,
+        frequency: _frequency,
+        type: _type,
+      );
+
+      if (widget.isEditing) {
+        await GoalService.updateGoal(goal);
+      } else {
         await GoalService.addGoal(goal);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('目标添加成功')),
-          );
-          Navigator.pop(context, true); // 返回并传递成功标志
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('添加失败: $e')),
-          );
-        }
       }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(widget.isEditing ? '目标更新成功' : '目标添加成功'),
+        ),
+      );
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败：$e')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.isEditing ? '编辑目标' : '新增目标';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('添加目标'),
+        title: Text(title),
         actions: [
           IconButton(
+            tooltip: '保存',
             icon: const Icon(Icons.save),
             onPressed: _submitGoal,
           ),
@@ -107,7 +137,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return '请输入目标名称';
                   }
                   return null;
@@ -117,7 +147,8 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
-                  labelText: '目标描述',
+                  labelText: '目标说明',
+                  hintText: '补充目标的具体要求或备注',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -126,66 +157,72 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               TextFormField(
                 controller: _pointsController,
                 decoration: const InputDecoration(
-                  labelText: '积分奖励',
+                  labelText: '奖励积分',
                   border: OutlineInputBorder(),
+                  suffixText: '分',
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return '请输入积分奖励';
+                    return '请填写奖励积分';
                   }
-                  if (int.tryParse(value) == null) {
-                    return '请输入有效的数字';
+                  final parsed = int.tryParse(value);
+                  if (parsed == null || parsed <= 0) {
+                    return '请输入大于 0 的整数';
                   }
                   return null;
                 },
               ),
-              const SizedBox(height: 16),
-              const Text('分类'),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
+              _SectionTitle('类别'),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: _categories.map((category) {
+                  final isSelected = _selectedCategoryId == category['id'];
                   return ChoiceChip(
                     label: Text(category['name']!),
-                    selected: _selectedCategory == category['name'],
+                    selected: isSelected,
                     onSelected: (selected) {
                       setState(() {
-                        _selectedCategory = selected ? category['name']! : '';
+                        _selectedCategoryId =
+                            selected ? category['id']! : _selectedCategoryId;
                       });
                     },
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 16),
-              const Text('频率'),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
+              _SectionTitle('频率'),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: _frequencies.map((frequency) {
+                  final isSelected = _frequency == frequency['value'];
                   return ChoiceChip(
                     label: Text(frequency['name']!),
-                    selected: _frequency == frequency['value'],
+                    selected: isSelected,
                     onSelected: (selected) {
                       setState(() {
-                        _frequency = selected ? frequency['value']! : 'daily';
+                        _frequency = selected ? frequency['value']! : _frequency;
                       });
                     },
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 16),
-              const Text('类型'),
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
+              _SectionTitle('类型'),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: _types.map((type) {
+                  final isSelected = _type == type['value'];
                   return ChoiceChip(
                     label: Text(type['name']!),
-                    selected: _type == type['value'],
+                    selected: isSelected,
                     onSelected: (selected) {
                       setState(() {
-                        _type = selected ? type['value']! : 'habit';
+                        _type = selected ? type['value']! : _type;
                       });
                     },
                   );
@@ -194,13 +231,33 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: _submitGoal,
-                  child: const Text('添加目标'),
+                  child: Text(widget.isEditing ? '保存目标' : '添加目标'),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

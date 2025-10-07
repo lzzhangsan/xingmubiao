@@ -1,45 +1,44 @@
 import 'package:xingmubiao/src/models/reward.dart';
 
 class RewardService {
-  // 模拟心愿数据
+  // 模拟的心愿奖励数据
   static final List<Reward> _rewards = [
     Reward(
       id: '1',
-      title: '玩具车',
-      description: '遥控玩具车一辆',
+      title: '周末亲子出游',
+      description: '一起去动物园或博物馆度过愉快的半天。',
       pointsRequired: 200,
       createdAt: DateTime.now().subtract(const Duration(days: 10)),
     ),
     Reward(
       id: '2',
-      title: '绘本',
-      description: '精美绘本一本',
+      title: '额外平板使用时间',
+      description: '可额外使用 30 分钟的平板娱乐时间。',
       pointsRequired: 150,
       createdAt: DateTime.now().subtract(const Duration(days: 8)),
     ),
     Reward(
       id: '3',
-      title: '冰淇淋',
-      description: '喜欢的口味任选',
-      pointsRequired: 50,
+      title: '喜欢的小零食',
+      description: '兑换一份孩子最喜欢的健康小零食。',
+      pointsRequired: 80,
       createdAt: DateTime.now().subtract(const Duration(days: 5)),
     ),
   ];
 
   static Future<List<Reward>> getRewards() async {
-    // 模拟网络延迟
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _rewards;
+    await Future.delayed(const Duration(milliseconds: 400));
+    return List<Reward>.from(_rewards);
   }
 
   static Future<Reward> addReward(Reward reward) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 250));
     _rewards.add(reward);
     return reward;
   }
 
   static Future<void> updateReward(Reward reward) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 250));
     final index = _rewards.indexWhere((r) => r.id == reward.id);
     if (index != -1) {
       _rewards[index] = reward;
@@ -47,7 +46,7 @@ class RewardService {
   }
 
   static Future<void> deleteReward(String rewardId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 200));
     _rewards.removeWhere((r) => r.id == rewardId);
   }
 }

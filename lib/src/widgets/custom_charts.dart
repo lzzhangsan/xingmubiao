@@ -25,7 +25,7 @@ class CustomLineChart extends StatelessWidget {
             barWidth: 4,
             belowBarData: BarAreaData(
               show: true,
-              color: color.withOpacity(0.3),
+              color: color.withValues(alpha: 0.3),
             ),
             dotData: FlDotData(show: true),
           ),
