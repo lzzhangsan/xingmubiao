@@ -10,6 +10,7 @@ import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/screens/wishlist_screen.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
 import 'package:xingmubiao/src/services/point_service.dart';
+import 'package:xingmubiao/src/services/checkin_service.dart';
 import 'package:xingmubiao/src/services/reward_service.dart';
 import 'package:xingmubiao/src/widgets/child_selector.dart';
 
@@ -113,13 +114,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final todayPoints = _calculatePoints(pointRecords, days: 1);
       final weekPoints = _calculatePoints(pointRecords, days: 7);
 
+      // 根据“今日是否已获得该目标对应的积分”来勾选，确保不会重复加分
+      final now = DateTime.now();
+      final earnedTodayGoalIds = pointRecords
+          .where((p) =>
+              p.type == 'earned' &&
+              p.createdAt.year == now.year &&
+              p.createdAt.month == now.month &&
+              p.createdAt.day == now.day)
+          .map((p) => p.relatedId)
+          .whereType<String>()
+          .toSet();
+
       if (!mounted) return;
       setState(() {
         _totalPoints = totalPoints;
         _todayPoints = todayPoints;
         _weekPoints = weekPoints;
         _todayGoals = goals;
-        _checkedGoals = List<bool>.filled(goals.length, false);
+        _checkedGoals = goals
+            .map((g) => earnedTodayGoalIds.contains(g.id))
+            .toList(growable: false);
         _wishlistPreview = rewards.take(3).toList();
         _isLoading = false;
         _pointsAnimation = IntTween(
@@ -286,13 +301,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             _TodayGoalsSection(
                               goals: _todayGoals,
                               checkedGoals: _checkedGoals,
-                              onToggleGoal: (index) {
-                                setState(() {
-                                  _checkedGoals[index] = !_checkedGoals[index];
-                                });
+                              onToggleGoal: (index) async {
+                                final goal = _todayGoals[index];
+                                final child = _provider?.selectedChild;
+                                if (child == null) return;
+
+                                // 查询今天是否已有该目标的已获积分记录
+                                final points = await PointService.getPointsByUser(child.id);
+                                final now = DateTime.now();
+                                final existing = points.firstWhere(
+                                  (p) =>
+                                      p.type == 'earned' &&
+                                      p.relatedId == goal.id &&
+                                      p.createdAt.year == now.year &&
+                                      p.createdAt.month == now.month &&
+                                      p.createdAt.day == now.day,
+                                  orElse: () => Point(
+                                    id: '',
+                                    userId: child.id,
+                                    amount: 0,
+                                    reason: '',
+                                    type: 'earned',
+                                    relatedId: goal.id,
+                                    createdAt: now,
+                                  ),
+                                );
+
                                 if (_checkedGoals[index]) {
-                                  _addPointsForGoal(_todayGoals[index]);
+                                  // 当前为已勾选 -> 用户点击则取消积分（不动打卡记录）
+                                  if (existing.id.isNotEmpty) {
+                                    await PointService.deletePoint(existing.id);
+                                  }
+                                  setState(() => _checkedGoals[index] = false);
+                                } else {
+                                  // 当前未勾选 -> 若今天还未加过分则增加一次
+                                  if (existing.id.isEmpty) {
+                                    await _addPointsForGoal(goal);
+                                  }
+                                  setState(() => _checkedGoals[index] = true);
                                 }
+                                // 刷新头部积分统计
+                                await _loadData(showLoader: false);
                               },
                               onManageGoal: _openGoalList,
                             ),

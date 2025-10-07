@@ -126,6 +126,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
     return sum / _checkins.length;
   }
 
+  // 当某日的打卡变更时，刷新首页的今日积分/勾选态：不在此直接改积分，只触发首页刷新（保持单一职责）
+
   Widget _buildNoChildView() {
     return Center(
       child: Padding(
