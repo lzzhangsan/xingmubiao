@@ -202,9 +202,10 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                     return '请输入积分';
                   }
                   final parsed = int.tryParse(value);
-                  if (parsed == null || parsed <= 0) {
-                    return '请输入正整数';
+                  if (parsed == null) {
+                    return '请输入整数';
                   }
+                  // 移除正数限制，允许任何整数（正负都可以）
                   return null;
                 },
               ),

@@ -177,7 +177,7 @@ class _AchievementItem extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${achievement.pointsRequired}积分',
+                    '${achievement.pointsRequired >= 0 ? '+' : ''}${achievement.pointsRequired}积分',
                     style: TextStyle(
                       color: achievement.isUnlocked ? Colors.orange : Colors.grey,
                       fontWeight: FontWeight.bold,

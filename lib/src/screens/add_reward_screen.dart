@@ -140,9 +140,10 @@ class _AddRewardScreenState extends State<AddRewardScreen> {
                     return '请填写积分';
                   }
                   final parsed = int.tryParse(value);
-                  if (parsed == null || parsed <= 0) {
-                    return '请输入大于 0 的整数';
+                  if (parsed == null) {
+                    return '请输入整数';
                   }
+                  // 移除正数限制，允许任何整数（正负都可以）
                   return null;
                 },
               ),

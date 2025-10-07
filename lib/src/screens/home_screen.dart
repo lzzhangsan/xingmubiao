@@ -597,7 +597,7 @@ class _WishlistPreview extends StatelessWidget {
                   title: Text(reward.title),
                   subtitle: Text(reward.description),
                   trailing: Text(
-                    '${reward.pointsRequired}分',
+                    '${reward.pointsRequired >= 0 ? '+' : ''}${reward.pointsRequired}分',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.orange,

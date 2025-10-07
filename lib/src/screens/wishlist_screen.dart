@@ -326,7 +326,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            '${reward.pointsRequired} 分',
+                                            '${reward.pointsRequired >= 0 ? '+' : ''}${reward.pointsRequired} 分',
                                             style: const TextStyle(
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,

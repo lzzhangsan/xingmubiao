@@ -310,7 +310,7 @@ class _GoalListItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  '+${goal.points} 分',
+                  '${goal.points >= 0 ? '+' : ''}${goal.points} 分',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
