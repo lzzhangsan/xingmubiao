@@ -261,8 +261,9 @@ class _CheckinGoalList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: goals.length,
       itemBuilder: (context, index) {
+        // 将日期纳入 Key，避免跨天复用同一 StatefulWidget 状态
         return _CheckinGoalItem(
-          key: ValueKey(goals[index].id),
+          key: ValueKey('${goals[index].id}-${selectedDate.toIso8601String()}'),
           childId: childId,
           goal: goals[index],
           selectedDate: selectedDate,
@@ -304,6 +305,16 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
     _loadExistingIfAny();
   }
 
+  @override
+  void didUpdateWidget(covariant _CheckinGoalItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 日期或目标变化时，刷新本地状态
+    if (oldWidget.selectedDate != widget.selectedDate ||
+        oldWidget.goal.id != widget.goal.id) {
+      _loadExistingIfAny();
+    }
+  }
+
   Future<void> _loadExistingIfAny() async {
     try {
       final sameDayCheckins = await CheckinService.getCheckinsForChildByDate(
@@ -322,18 +333,22 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
           createdAt: widget.selectedDate,
         ),
       );
-      if (existing.id.isNotEmpty) {
-        setState(() {
+      setState(() {
+        if (existing.id.isNotEmpty) {
           _existingCheckinId = existing.id;
           _selectedScore = existing.score;
-          if (existing.comment != null) {
-            _commentController.text = existing.comment!;
-          }
-          if (existing.imageUrl != null && existing.imageUrl!.isNotEmpty) {
-            _image = XFile(existing.imageUrl!);
-          }
-        });
-      }
+          _commentController.text = existing.comment ?? '';
+          _image = (existing.imageUrl != null && existing.imageUrl!.isNotEmpty)
+              ? XFile(existing.imageUrl!)
+              : null;
+        } else {
+          // 当天没有记录，重置到空白
+          _existingCheckinId = null;
+          _selectedScore = 0;
+          _commentController.text = '';
+          _image = null;
+        }
+      });
     } catch (_) {
       // 读取失败不影响打卡流程
     }
