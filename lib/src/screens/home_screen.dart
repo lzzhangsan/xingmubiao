@@ -335,7 +335,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               rewards: _wishlistPreview,
                               onViewMore: _openWishlist,
                             ),
-                            const _GrowthPreview(),
                             const SizedBox(height: 24),
                           ],
                         ),
@@ -611,36 +610,4 @@ class _WishlistPreview extends StatelessWidget {
   }
 }
 
-class _GrowthPreview extends StatelessWidget {
-  const _GrowthPreview();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '成长轨迹',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Text('更多统计功能开发中'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// Growth preview removed per request.
