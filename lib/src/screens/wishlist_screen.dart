@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:xingmubiao/src/models/point.dart';
 import 'package:xingmubiao/src/models/reward.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
@@ -19,8 +20,10 @@ class WishlistScreen extends StatefulWidget {
 class _WishlistScreenState extends State<WishlistScreen> {
   List<Reward> _rewards = [];
   int _userPoints = 0;
+  List<Point> _history = [];
   bool _isLoading = true;
   bool _isFetching = false;
+  bool _historyExpanded = false;
 
   AppProvider? _provider;
   String? _currentChildId;
@@ -74,12 +77,16 @@ class _WishlistScreenState extends State<WishlistScreen> {
     }
 
     try {
-  final rewards = await RewardService.getRewards();
-  final points = await PointService.getAvailablePoints(child.id);
+      final rewards = await RewardService.getRewards();
+      final points = await PointService.getAvailablePoints(child.id);
+      final allPoints = await PointService.getPointsByUser(child.id);
+      final spent = allPoints.where((p) => p.type == 'spent').toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
       if (!mounted) return;
-      setState(() {
+        setState(() {
         _rewards = rewards;
         _userPoints = points;
+        _history = spent;
         _isLoading = false;
       });
     } catch (e) {
@@ -266,7 +273,64 @@ class _WishlistScreenState extends State<WishlistScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
+                            // Collapsible redemption history placed under points card
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('兑换记录', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                        TextButton(
+                                          onPressed: () {
+                                            setState(() => _historyExpanded = !_historyExpanded);
+                                          },
+                                          child: Text(_historyExpanded ? '收起' : '展开'),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (_history.isEmpty)
+                                      const Text('暂无兑换记录')
+                                    else
+                                      ..._history.take(_historyExpanded ? 200 : 3).map((point) {
+                                        final dt = DateFormat('yyyy-MM-dd HH:mm').format(point.createdAt);
+                                        // try to extract reward title from reason if present
+                                        final title = point.reason.replaceFirst('兑换奖励：', '').trim();
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                                    const SizedBox(height: 4),
+                                                    Text(dt, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text('-${point.amount} 分', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    if (!_historyExpanded && _history.length > 3)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text('${_history.length} 条历史记录（仅展示最近3条，点击展开查看最多200条）', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           if (_rewards.isEmpty)
                             const Padding(
                               padding: EdgeInsets.all(32),
