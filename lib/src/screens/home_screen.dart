@@ -74,6 +74,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
+  int _calculateTodayPoints(List<Point> records) {
+    // 计算今天的积分
+    final earnedRecords = records.where((record) => record.type == 'earned').toList();
+    
+    if (earnedRecords.isEmpty) return 0;
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = todayStart.add(const Duration(days: 1));
+    
+    int total = 0;
+    for (final record in earnedRecords) {
+      final created = DateTime(record.createdAt.year, record.createdAt.month,
+          record.createdAt.day);
+      if (created.compareTo(todayStart) >= 0 && created.compareTo(todayEnd) < 0) {
+        total += record.amount;
+      }
+    }
+    return total;
+  }
+
+  int _calculateWeekPoints(List<Point> records) {
+    // 计算本周的积分（周一到今天）
+    final earnedRecords = records.where((record) => record.type == 'earned').toList();
+    
+    if (earnedRecords.isEmpty) return 0;
+    final now = DateTime.now();
+    
+    // 计算本周一的日期
+    final today = DateTime(now.year, now.month, now.day);
+    final weekday = today.weekday; // 周一为1，周日为7
+    final weekStart = today.subtract(Duration(days: weekday - 1)); // 本周一
+    
+    int total = 0;
+    for (final record in earnedRecords) {
+      final created = DateTime(record.createdAt.year, record.createdAt.month,
+          record.createdAt.day);
+      // 在本周一到今天之间（包含今天）
+      if (created.compareTo(weekStart) >= 0 && created.compareTo(today) <= 0) {
+        total += record.amount;
+      }
+    }
+    return total;
+  }
+
   Future<void> _loadData({bool showLoader = true}) async {
     final provider = _provider;
     if (provider == null || !provider.isInitialized) return;
@@ -111,8 +155,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final goals = await goalsFuture;
       final rewards = await rewardsFuture;
 
-      final todayPoints = _calculatePoints(pointRecords, days: 1);
-      final weekPoints = _calculatePoints(pointRecords, days: 7);
+      final todayPoints = _calculateTodayPoints(pointRecords);
+      final weekPoints = _calculateWeekPoints(pointRecords);
 
       // 根据“今日是否已获得该目标对应的积分”来勾选，确保不会重复加分
       final now = DateTime.now();
@@ -152,24 +196,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } finally {
       _isFetching = false;
     }
-  }
-
-  int _calculatePoints(List<Point> records, {required int days}) {
-    // 只计算earned类型的积分，spent类型的积分已经在总积分中被减去了
-    final earnedRecords = records.where((record) => record.type == 'earned').toList();
-    
-    if (earnedRecords.isEmpty) return 0;
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: days - 1));
-    int total = 0;
-    for (final record in earnedRecords) {
-      final created = DateTime(record.createdAt.year, record.createdAt.month,
-          record.createdAt.day);
-      if (created.isBefore(start)) continue;
-      total += record.amount;
-    }
-    return total;
   }
 
   Future<void> _addPointsForGoal(Goal goal) async {
