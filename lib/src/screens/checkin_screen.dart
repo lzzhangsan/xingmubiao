@@ -606,11 +606,13 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                       // Show full screen interactive viewer for the original image
                       showDialog(
                         context: context,
+                        barrierColor: Colors.transparent,
                         builder: (context) => Dialog(
                           insetPadding: EdgeInsets.zero,
-                          backgroundColor: Colors.black,
+                          backgroundColor: Colors.transparent,
                           child: GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
+                            behavior: HitTestBehavior.opaque,
                             child: SafeArea(
                               child: Center(
                                 child: Hero(
