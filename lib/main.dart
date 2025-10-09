@@ -130,20 +130,9 @@ class _MainScreenState extends State<MainScreen> {
           setState(() => _selectedIndex = index);
         },
       ),
-      floatingActionButton: _selectedIndex == 4
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const AddRewardScreen(),
-                  ),
-                );
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      // No global FAB: each screen manages its own actions. The wishlist
+      // screen already provides a top-right add button, so the bottom-right
+      // FAB is removed to avoid duplication.
     );
   }
 }
