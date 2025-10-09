@@ -4,12 +4,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'src/providers/app_provider.dart';
-import 'src/screens/achievements_screen.dart';
 import 'src/screens/checkin_screen.dart';
 import 'src/screens/goal_list_screen.dart';
 import 'src/screens/home_screen.dart';
 import 'src/screens/settings_screen.dart';
-import 'src/screens/stats_screen.dart';
 import 'src/screens/wishlist_screen.dart';
 import 'src/screens/add_reward_screen.dart';
 import 'src/services/firebase_initializer.dart';
@@ -57,7 +55,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/goals': (context) => const GoalListScreen(),
         '/wishlist': (context) => const WishlistScreen(),
-        '/achievements': (context) => const AchievementsScreen(),
         '/settings': (context) => const SettingsScreen(),
       },
     );
@@ -78,9 +75,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     GoalListScreen(),
     CheckinScreen(),
-    StatsScreen(),
     WishlistScreen(),
-    AchievementsScreen(),
   ];
 
   @override
@@ -111,19 +106,9 @@ class _MainScreenState extends State<MainScreen> {
             label: '打卡',
           ),
           NavigationDestination(
-            icon: Icon(Icons.auto_graph_outlined),
-            selectedIcon: Icon(Icons.auto_graph),
-            label: '统计',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.card_giftcard_outlined),
             selectedIcon: Icon(Icons.card_giftcard),
             label: '心愿',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.emoji_events_outlined),
-            selectedIcon: Icon(Icons.emoji_events),
-            label: '成就',
           ),
         ],
         onDestinationSelected: (index) {
