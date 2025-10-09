@@ -504,33 +504,55 @@ class _TodayGoalsSection extends StatelessWidget {
 }
 
 class _GoalItem extends StatelessWidget {
+  final Goal goal;
+  final bool isChecked;
   const _GoalItem({
     required this.goal,
     required this.isChecked,
   });
 
-  final Goal goal;
-  final bool isChecked;
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final titleColor = isChecked ? theme.colorScheme.onSurface : Colors.grey;
+    final subtitleColor = isChecked ? theme.colorScheme.onSurface.withOpacity(0.8) : Colors.grey;
+
     return Card(
       margin: const EdgeInsets.only(top: 8),
-      child: CheckboxListTile(
-        value: isChecked,
-        onChanged: null, // 设置为null使其只读，不能点击
-        title: Text(goal.title),
-        subtitle: goal.description.isNotEmpty ? Text(goal.description) : null,
-        secondary: Container(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isChecked ? theme.colorScheme.primary : Colors.transparent,
+            border: Border.all(color: isChecked ? theme.colorScheme.primary : Colors.grey),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: isChecked
+              ? const Icon(Icons.check, color: Colors.white, size: 20)
+              : const SizedBox.shrink(),
+        ),
+        title: Text(
+          goal.title,
+          style: TextStyle(color: titleColor),
+        ),
+        subtitle: goal.description.isNotEmpty
+            ? Text(
+                goal.description,
+                style: TextStyle(color: subtitleColor),
+              )
+            : null,
+        trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+            color: theme.colorScheme.primary.withOpacity(0.12),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
             '+${goal.points}分',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
+              color: isChecked ? theme.colorScheme.primary : Colors.grey,
               fontWeight: FontWeight.bold,
             ),
           ),

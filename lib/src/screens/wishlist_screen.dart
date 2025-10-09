@@ -74,8 +74,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
     }
 
     try {
-      final rewards = await RewardService.getRewards();
-      final points = await PointService.getTotalPoints(child.id);
+  final rewards = await RewardService.getRewards();
+  final points = await PointService.getAvailablePoints(child.id);
       if (!mounted) return;
       setState(() {
         _rewards = rewards;

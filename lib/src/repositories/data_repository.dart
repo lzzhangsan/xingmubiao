@@ -55,6 +55,9 @@ class DataRepository {
   Future<int> getTotalPoints(String userId) =>
       PointService.getTotalPoints(userId);
 
+  Future<int> getAvailablePoints(String userId) =>
+      PointService.getAvailablePoints(userId);
+
   Future<Point> addPoint(Point point) => PointService.addPoint(point);
 
   Future<void> updatePoint(Point point) => PointService.updatePoint(point);

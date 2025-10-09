@@ -30,7 +30,17 @@ class PointService {
     return _cache.where((point) => point.userId == userId).toList();
   }
 
+  // 历史累计获得的总积分（不扣除已兑换/支出）
   static Future<int> getTotalPoints(String userId) async {
+    await _ensureLoaded();
+    final earned = _cache
+        .where((point) => point.userId == userId && point.type == 'earned')
+        .fold<int>(0, (sum, point) => sum + point.amount);
+    return earned;
+  }
+
+  // 当前可用积分（历史获得 - 历史支出），用于兑换/消费判断
+  static Future<int> getAvailablePoints(String userId) async {
     await _ensureLoaded();
     final earned = _cache
         .where((point) => point.userId == userId && point.type == 'earned')
