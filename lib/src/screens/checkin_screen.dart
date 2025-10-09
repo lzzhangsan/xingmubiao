@@ -601,10 +601,47 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
             if (_image != null)
               Column(
                 children: [
-                  Image.file(
-                    File(_image!.path),
-                    height: 120,
-                    fit: BoxFit.cover,
+                  GestureDetector(
+                    onTap: () {
+                      // Show full screen interactive viewer for the original image
+                      showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          insetPadding: EdgeInsets.zero,
+                          backgroundColor: Colors.black,
+                          child: GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: SafeArea(
+                              child: Center(
+                                child: Hero(
+                                  tag: _image!.path,
+                                  child: InteractiveViewer(
+                                    panEnabled: true,
+                                    minScale: 1.0,
+                                    maxScale: 5.0,
+                                    child: Image.file(
+                                      File(_image!.path),
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Hero(
+                      tag: _image!.path,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(_image!.path),
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
