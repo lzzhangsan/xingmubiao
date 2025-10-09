@@ -6,10 +6,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/models/checkin.dart';
 import 'package:xingmubiao/src/models/goal.dart';
+import 'package:xingmubiao/src/models/point.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/services/checkin_service.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
+import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:xingmubiao/src/widgets/child_selector.dart';
 
 class CheckinScreen extends StatefulWidget {
@@ -432,8 +434,22 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
 
       if (_existingCheckinId == null) {
         await CheckinService.addCheckin(newOrUpdated);
+        
+        // 为新打卡创建积分记录
+        final goal = widget.goal;
+        final point = Point(
+          id: '${newOrUpdated.id}_point',
+          userId: widget.childId,
+          amount: goal.points,
+          reason: '完成目标: ${goal.title}',
+          type: 'earned',
+          relatedId: goal.id,
+          createdAt: widget.selectedDate,
+        );
+        await PointService.addPoint(point);
       } else {
         await CheckinService.updateCheckin(newOrUpdated);
+        // 更新打卡不改变积分，积分只在首次打卡时创建
       }
 
       if (!mounted) return;
@@ -452,6 +468,58 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('打卡失败: $e')),
+      );
+    }
+  }
+
+  Future<void> _deleteCheckin() async {
+    if (_existingCheckinId == null) return;
+    
+    try {
+      // 删除打卡记录
+      await CheckinService.deleteCheckin(_existingCheckinId!);
+      
+      // 同时删除相应的积分记录
+      final points = await PointService.getPointsByUser(widget.childId);
+      final pointToDelete = points.firstWhere(
+        (point) => point.relatedId == widget.goal.id && 
+                  point.createdAt.year == widget.selectedDate.year &&
+                  point.createdAt.month == widget.selectedDate.month &&
+                  point.createdAt.day == widget.selectedDate.day &&
+                  point.type == 'earned',
+        orElse: () => Point(
+          id: '',
+          userId: widget.childId,
+          amount: 0,
+          reason: '',
+          type: 'earned',
+          relatedId: '',
+          createdAt: widget.selectedDate,
+        ),
+      );
+      
+      if (pointToDelete.id.isNotEmpty) {
+        await PointService.deletePoint(pointToDelete.id);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已删除打卡记录')),
+      );
+
+      // 重置状态
+      setState(() {
+        _existingCheckinId = null;
+        _selectedScore = 0;
+        _commentController.text = '';
+        _image = null;
+      });
+
+      widget.onSubmitted();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('删除打卡记录失败: $e')),
       );
     }
   }
@@ -527,8 +595,19 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('提交'),
+                      : Text(_existingCheckinId == null ? '提交' : '更新'),
                 ),
+                // 添加删除按钮，仅在已存在打卡记录时显示
+                if (_existingCheckinId != null) ...[
+                  const SizedBox(width: 16),
+                  OutlinedButton(
+                    onPressed: _isSubmitting ? null : _deleteCheckin,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                    child: const Text('删除'),
+                  ),
+                ],
               ],
             ),
           ],
