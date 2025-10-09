@@ -341,12 +341,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-      floatingActionButton: selectedChild == null
-          ? null
-          : FloatingActionButton(
-              onPressed: _openAddGoal,
-              child: const Icon(Icons.add),
-            ),
+      // Floating action button for adding a goal removed —
+      // goal creation moved to the GoalList/管理目标 page.
     );
   }
 }
