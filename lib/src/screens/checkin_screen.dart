@@ -232,7 +232,8 @@ class _DateSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final weekdayLabel = DateFormat.E('zh_CN').format(selectedDate); // 周几
+    // 使用 EEEE 显示完整的星期名称，例如 '星期五'
+    final weekdayLabel = DateFormat.EEEE('zh_CN').format(selectedDate);
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -242,20 +243,49 @@ class _DateSelector extends StatelessWidget {
             icon: const Icon(Icons.arrow_back),
             onPressed: () => onDateChanged(selectedDate.subtract(const Duration(days: 1))),
           ),
-          InkWell(
-            onTap: onOpenPicker,
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  Text(
-                    '${selectedDate.year}年${selectedDate.month}月${selectedDate.day}日  ($weekdayLabel)',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.calendar_today, size: 18),
-                ],
+          Expanded(
+            child: InkWell(
+              onTap: onOpenPicker,
+              borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.max,
+                  children: [
+                    // 优先显示“月日”为主，年份为次要信息（小字号并可截断）
+                    Expanded(
+                      child: Row(
+                        children: [
+                          // 月日（主要信息）
+                          Text(
+                            '${selectedDate.month}月${selectedDate.day}日',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(width: 6),
+                          // 年份放在旁边，样式较小，必要时可截断
+                          Flexible(
+                            child: Text(
+                              '${selectedDate.year}年',
+                              style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 始终显示完整的星期几（如：星期五），不截断
+                    Text(
+                      '($weekdayLabel)',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.calendar_today, size: 18),
+                  ],
+                ),
               ),
             ),
           ),
