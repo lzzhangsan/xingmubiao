@@ -329,48 +329,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             _TodayGoalsSection(
                               goals: _todayGoals,
                               checkedGoals: _checkedGoals,
-                              onToggleGoal: (index) async {
-                                final goal = _todayGoals[index];
-                                final child = _provider?.selectedChild;
-                                if (child == null) return;
-
-                                // 查询今天是否已有该目标的已获积分记录
-                                final points = await PointService.getPointsByUser(child.id);
-                                final now = DateTime.now();
-                                final existing = points.firstWhere(
-                                  (p) =>
-                                      p.type == 'earned' &&
-                                      p.relatedId == goal.id &&
-                                      p.createdAt.year == now.year &&
-                                      p.createdAt.month == now.month &&
-                                      p.createdAt.day == now.day,
-                                  orElse: () => Point(
-                                    id: '',
-                                    userId: child.id,
-                                    amount: 0,
-                                    reason: '',
-                                    type: 'earned',
-                                    relatedId: goal.id,
-                                    createdAt: now,
-                                  ),
-                                );
-
-                                if (_checkedGoals[index]) {
-                                  // 当前为已勾选 -> 用户点击则取消积分（不动打卡记录）
-                                  if (existing.id.isNotEmpty) {
-                                    await PointService.deletePoint(existing.id);
-                                  }
-                                  setState(() => _checkedGoals[index] = false);
-                                } else {
-                                  // 当前未勾选 -> 若今天还未加过分则增加一次
-                                  if (existing.id.isEmpty) {
-                                    await _addPointsForGoal(goal);
-                                  }
-                                  setState(() => _checkedGoals[index] = true);
-                                }
-                                // 刷新头部积分统计
-                                await _loadData(showLoader: false);
-                              },
                               onManageGoal: _openGoalList,
                             ),
                             _WishlistPreview(
@@ -492,13 +450,11 @@ class _TodayGoalsSection extends StatelessWidget {
   const _TodayGoalsSection({
     required this.goals,
     required this.checkedGoals,
-    required this.onToggleGoal,
     required this.onManageGoal,
   });
 
   final List<Goal> goals;
   final List<bool> checkedGoals;
-  final ValueChanged<int> onToggleGoal;
   final VoidCallback onManageGoal;
 
   @override
@@ -539,7 +495,6 @@ class _TodayGoalsSection extends StatelessWidget {
               (entry) => _GoalItem(
                 goal: entry.value,
                 isChecked: checkedGoals[entry.key],
-                onChanged: () => onToggleGoal(entry.key),
               ),
             ),
         ],
@@ -552,12 +507,10 @@ class _GoalItem extends StatelessWidget {
   const _GoalItem({
     required this.goal,
     required this.isChecked,
-    required this.onChanged,
   });
 
   final Goal goal;
   final bool isChecked;
-  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -565,7 +518,7 @@ class _GoalItem extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       child: CheckboxListTile(
         value: isChecked,
-        onChanged: (_) => onChanged(),
+        onChanged: null, // 设置为null使其只读，不能点击
         title: Text(goal.title),
         subtitle: goal.description.isNotEmpty ? Text(goal.description) : null,
         secondary: Container(
