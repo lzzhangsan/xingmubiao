@@ -13,6 +13,8 @@ import 'src/screens/wishlist_screen.dart';
 import 'src/screens/add_reward_screen.dart';
 import 'src/services/firebase_initializer.dart';
 import 'src/storage/local_data_store.dart';
+import 'src/widgets/cool_background.dart';
+import 'src/navigation/route_observer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,12 +56,14 @@ class MyApp extends StatelessWidget {
       case ThemeStyle.cool:
         themeData = ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple, brightness: Brightness.light),
-          scaffoldBackgroundColor: const Color(0xFFEDE7F6),
+          scaffoldBackgroundColor: Colors.transparent,
+          appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
           useMaterial3: true,
         );
         darkThemeData = ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
-          scaffoldBackgroundColor: const Color(0xFF1A237E),
+          scaffoldBackgroundColor: Colors.transparent,
+          appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
           useMaterial3: true,
         );
         break;
@@ -105,6 +109,40 @@ class MyApp extends StatelessWidget {
       theme: themeData,
       darkTheme: darkThemeData,
       home: const MainScreen(),
+  navigatorObservers: [routeObserver],
+  builder: (context, child) {
+        Widget content = child ?? const SizedBox.shrink();
+
+        // If a custom background image is set, paint it behind the content
+        if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty) {
+          final path = provider.customBgImage!;
+          final ImageProvider backgroundImage;
+          if (path.startsWith('http')) {
+            backgroundImage = NetworkImage(path);
+          } else {
+            backgroundImage = FileImage(File(path));
+          }
+
+          content = Stack(
+            children: [
+              Positioned.fill(
+                child: Image(
+                  image: backgroundImage,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned.fill(child: content),
+            ],
+          );
+        }
+
+        // If the cool theme is selected, wrap the entire app content in the animated background
+        if (provider.themeStyle == ThemeStyle.cool) {
+          content = AnimatedCoolBackground(child: content, dimContent: true);
+        }
+
+        return content;
+      },
       routes: {
         '/goals': (context) => const GoalListScreen(),
         '/wishlist': (context) => const WishlistScreen(),
@@ -137,29 +175,6 @@ class _MainScreenState extends State<MainScreen> {
     final provider = Provider.of<AppProvider>(context);
 
     Widget bodyContent = _screens[_selectedIndex];
-
-    // If a custom background image is set, paint it behind the content
-    if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty) {
-      final path = provider.customBgImage!;
-      final ImageProvider backgroundImage;
-      if (path.startsWith('http')) {
-        backgroundImage = NetworkImage(path);
-      } else {
-        backgroundImage = FileImage(File(path));
-      }
-
-      bodyContent = Stack(
-        children: [
-          Positioned.fill(
-            child: Image(
-              image: backgroundImage,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Positioned.fill(child: bodyContent),
-        ],
-      );
-    }
 
     return Scaffold(
       body: bodyContent,

@@ -283,6 +283,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+              const Text('动画强度', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Card(
+                child: Column(
+                  children: [
+                    RadioListTile<AnimationIntensity>(
+                      title: const Text('关（关闭动画）'),
+                      value: AnimationIntensity.off,
+                      groupValue: provider.animationIntensity,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        await provider.setAnimationIntensity(v);
+                        setState(() {});
+                      },
+                    ),
+                    RadioListTile<AnimationIntensity>(
+                      title: const Text('低（省电）'),
+                      value: AnimationIntensity.low,
+                      groupValue: provider.animationIntensity,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        await provider.setAnimationIntensity(v);
+                        setState(() {});
+                      },
+                    ),
+                    RadioListTile<AnimationIntensity>(
+                      title: const Text('中（适中）'),
+                      value: AnimationIntensity.medium,
+                      groupValue: provider.animationIntensity,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        await provider.setAnimationIntensity(v);
+                        setState(() {});
+                      },
+                    ),
+                    RadioListTile<AnimationIntensity>(
+                      title: const Text('高（默认）'),
+                      value: AnimationIntensity.high,
+                      groupValue: provider.animationIntensity,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        await provider.setAnimationIntensity(v);
+                        setState(() {});
+                      },
+                    ),
+                  ],
+                ),
+              ),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

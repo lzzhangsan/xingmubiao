@@ -6,6 +6,8 @@ import 'package:flutter/material.dart' show Color;
 
 enum ThemeStyle { day, night, simple, cool, custom }
 
+enum AnimationIntensity { off, low, medium, high }
+
 class AppProvider with ChangeNotifier {
   AppProvider() {
     _init();
@@ -21,10 +23,12 @@ class AppProvider with ChangeNotifier {
   ThemeStyle _themeStyle = ThemeStyle.day;
   String? _customBgColorHex;
   String? _customBgImage; // could be a URL or local path
+  AnimationIntensity _animationIntensity = AnimationIntensity.medium;
 
   ThemeStyle get themeStyle => _themeStyle;
   String? get customBgColorHex => _customBgColorHex;
   String? get customBgImage => _customBgImage;
+  AnimationIntensity get animationIntensity => _animationIntensity;
 
   List<User> get users => _users;
 
@@ -55,6 +59,7 @@ class AppProvider with ChangeNotifier {
     String themeKey = _prefixedKey('theme_style');
     String colorKey = _prefixedKey('custom_bg_color');
     String imageKey = _prefixedKey('custom_bg_image');
+    String animKey = _prefixedKey('anim_intensity');
 
     final style = await LocalDataStore.getString(themeKey);
     if (style != null) {
@@ -66,6 +71,14 @@ class AppProvider with ChangeNotifier {
     }
     _customBgColorHex = await LocalDataStore.getString(colorKey);
     _customBgImage = await LocalDataStore.getString(imageKey);
+    final anim = await LocalDataStore.getString(animKey);
+    if (anim != null) {
+      try {
+        _animationIntensity = AnimationIntensity.values.firstWhere((e) => e.toString().split('.').last == anim);
+      } catch (_) {
+        _animationIntensity = AnimationIntensity.high;
+      }
+    }
   }
 
   String _prefixedKey(String key) {
@@ -97,6 +110,12 @@ class AppProvider with ChangeNotifier {
     } else {
       await LocalDataStore.setString(_prefixedKey('custom_bg_image'), image);
     }
+    notifyListeners();
+  }
+
+  Future<void> setAnimationIntensity(AnimationIntensity intensity) async {
+    _animationIntensity = intensity;
+    await LocalDataStore.setString(_prefixedKey('anim_intensity'), intensity.toString().split('.').last);
     notifyListeners();
   }
 

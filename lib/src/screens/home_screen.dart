@@ -13,6 +13,9 @@ import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:xingmubiao/src/services/checkin_service.dart';
 import 'package:xingmubiao/src/services/reward_service.dart';
 import 'package:xingmubiao/src/widgets/child_selector.dart';
+import 'package:xingmubiao/src/widgets/cool_background.dart';
+import 'dart:math' as math;
+import 'dart:ui';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -52,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (_provider != provider) {
       _provider?.removeListener(_handleProviderChanged);
       _provider = provider;
-      provider.addListener(_handleProviderChanged);
+      _provider?.addListener(_handleProviderChanged);
       _handleProviderChanged();
     }
   }
@@ -286,18 +289,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final selectedChild = provider.selectedChild;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('每日目标'),
-        actions: [
-          const ChildSelector(),
-          // 通知按钮已移除（无实际功能），保留设置按钮
-          IconButton(
-            tooltip: '设置',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.pushNamed(context, '/settings'),
-          ),
-        ],
-      ),
+      appBar: provider.themeStyle == ThemeStyle.cool
+          ? GradientAppBar(
+              title: const Text('每日目标'),
+              actions: [
+                const ChildSelector(),
+                IconButton(
+                  tooltip: '设置',
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => Navigator.pushNamed(context, '/settings'),
+                ),
+              ],
+            )
+          : AppBar(
+              title: const Text('每日目标'),
+              actions: [
+                const ChildSelector(),
+                // 通知按钮已移除（无实际功能），保留设置按钮
+                IconButton(
+                  tooltip: '设置',
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => Navigator.pushNamed(context, '/settings'),
+                ),
+              ],
+            ),
       body: !provider.isInitialized
           ? const Center(child: CircularProgressIndicator())
           : selectedChild == null
@@ -306,31 +321,59 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ? const Center(child: CircularProgressIndicator())
                   : RefreshIndicator(
                       onRefresh: () => _loadData(showLoader: false),
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _StatisticsCard(
-                              todayPoints: _todayPoints,
-                              weekPoints: _weekPoints,
-                              totalPoints: _totalPoints,
-                              animation: _pointsAnimation,
+                      child: provider.themeStyle == ThemeStyle.cool
+                          ? AnimatedCoolBackground(
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    _StatisticsCard(
+                                      todayPoints: _todayPoints,
+                                      weekPoints: _weekPoints,
+                                      totalPoints: _totalPoints,
+                                      animation: _pointsAnimation,
+                                    ),
+                                    // 快捷操作入口已由底部导航替代，移除冗余按钮
+                                    _TodayGoalsSection(
+                                      goals: _todayGoals,
+                                      checkedGoals: _checkedGoals,
+                                      onManageGoal: _openGoalList,
+                                    ),
+                                    _WishlistPreview(
+                                      rewards: _wishlistPreview,
+                                      onViewMore: _openWishlist,
+                                    ),
+                                    const SizedBox(height: 24),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _StatisticsCard(
+                                    todayPoints: _todayPoints,
+                                    weekPoints: _weekPoints,
+                                    totalPoints: _totalPoints,
+                                    animation: _pointsAnimation,
+                                  ),
+                                  // 快捷操作入口已由底部导航替代，移除冗余按钮
+                                  _TodayGoalsSection(
+                                    goals: _todayGoals,
+                                    checkedGoals: _checkedGoals,
+                                    onManageGoal: _openGoalList,
+                                  ),
+                                  _WishlistPreview(
+                                    rewards: _wishlistPreview,
+                                    onViewMore: _openWishlist,
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
                             ),
-                            // 快捷操作入口已由底部导航替代，移除冗余按钮
-                            _TodayGoalsSection(
-                              goals: _todayGoals,
-                              checkedGoals: _checkedGoals,
-                              onManageGoal: _openGoalList,
-                            ),
-                            _WishlistPreview(
-                              rewards: _wishlistPreview,
-                              onViewMore: _openWishlist,
-                            ),
-                            const SizedBox(height: 24),
-                          ],
-                        ),
-                      ),
                     ),
       // Floating action button for adding a goal removed —
       // goal creation moved to the GoalList/管理目标 page.
@@ -603,3 +646,5 @@ class _WishlistPreview extends StatelessWidget {
 }
 
 // Growth preview removed per request.
+
+// Use shared GradientAppBar and AnimatedCoolBackground from widgets/cool_background.dart
