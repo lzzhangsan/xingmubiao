@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:xingmubiao/src/models/user.dart';
 import 'package:xingmubiao/src/services/user_service.dart';
 import 'package:xingmubiao/src/storage/local_data_store.dart';
+import 'package:flutter/material.dart' show Color;
+
+enum ThemeStyle { day, night, simple, cool, custom }
 
 class AppProvider with ChangeNotifier {
   AppProvider() {
@@ -13,6 +16,15 @@ class AppProvider with ChangeNotifier {
   List<User> _users = [];
   String? _selectedChildId;
   bool _initialized = false;
+
+  // Theme related
+  ThemeStyle _themeStyle = ThemeStyle.day;
+  String? _customBgColorHex;
+  String? _customBgImage; // could be a URL or local path
+
+  ThemeStyle get themeStyle => _themeStyle;
+  String? get customBgColorHex => _customBgColorHex;
+  String? get customBgImage => _customBgImage;
 
   List<User> get users => _users;
 
@@ -34,7 +46,48 @@ class AppProvider with ChangeNotifier {
     await UserService.ensureDefaultUsers();
     await _loadUsers();
     await _loadSelectedChild();
+    await _loadThemeSettings();
     _initialized = true;
+    notifyListeners();
+  }
+
+  Future<void> _loadThemeSettings() async {
+    final style = await LocalDataStore.getString('theme_style');
+    if (style != null) {
+      try {
+        _themeStyle = ThemeStyle.values.firstWhere((e) => e.toString().split('.').last == style);
+      } catch (_) {
+        _themeStyle = ThemeStyle.day;
+      }
+    }
+    _customBgColorHex = await LocalDataStore.getString('custom_bg_color');
+    _customBgImage = await LocalDataStore.getString('custom_bg_image');
+  }
+
+  Future<void> setThemeStyle(ThemeStyle style) async {
+    if (_themeStyle == style) return;
+    _themeStyle = style;
+    await LocalDataStore.setString('theme_style', style.toString().split('.').last);
+    notifyListeners();
+  }
+
+  Future<void> setCustomBgColorHex(String? hex) async {
+    _customBgColorHex = hex;
+    if (hex == null) {
+      await LocalDataStore.clearKey('custom_bg_color');
+    } else {
+      await LocalDataStore.setString('custom_bg_color', hex);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setCustomBgImage(String? image) async {
+    _customBgImage = image;
+    if (image == null) {
+      await LocalDataStore.clearKey('custom_bg_image');
+    } else {
+      await LocalDataStore.setString('custom_bg_image', image);
+    }
     notifyListeners();
   }
 

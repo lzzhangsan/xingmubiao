@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/screens/family_screen.dart';
-import 'package:xingmubiao/src/services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -12,67 +12,16 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _remindersEnabled = true;
-  String _childName = '小明';
-  String _parentName = '爸爸';
-  TimeOfDay _reminderTime = const TimeOfDay(hour: 19, minute: 0);
+  // local temp fields for UI
+  ThemeStyle? _selectedStyle;
+  String? _customColorHex;
+  TextEditingController _imageController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    // load handled in didChangeDependencies via provider
   }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
-      _remindersEnabled = prefs.getBool('remindersEnabled') ?? true;
-      _childName = prefs.getString('childName') ?? '小明';
-      _parentName = prefs.getString('parentName') ?? '爸爸';
-      final hour = prefs.getInt('reminderHour') ?? 19;
-      final minute = prefs.getInt('reminderMinute') ?? 0;
-      _reminderTime = TimeOfDay(hour: hour, minute: minute);
-    });
-  }
-
-  Future<void> _saveSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notificationsEnabled', _notificationsEnabled);
-    await prefs.setBool('remindersEnabled', _remindersEnabled);
-    await prefs.setString('childName', _childName);
-    await prefs.setString('parentName', _parentName);
-    await prefs.setInt('reminderHour', _reminderTime.hour);
-    await prefs.setInt('reminderMinute', _reminderTime.minute);
-    
-    // 如果启用了提醒，设置每日通知
-    if (_remindersEnabled) {
-      await NotificationService().scheduleDailyNotification(
-        hour: _reminderTime.hour,
-        minute: _reminderTime.minute,
-        title: '目标提醒',
-        body: '该完成今天的任务了！',
-      );
-    } else {
-      // 如果关闭了提醒，取消所有通知
-      await NotificationService().cancelAllNotifications();
-    }
-  }
-
-  Future<void> _selectReminderTime() async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: _reminderTime,
-    );
-    if (picked != null && picked != _reminderTime) {
-      setState(() {
-        _reminderTime = picked;
-      });
-      _saveSettings();
-    }
-  }
-
   void _navigateToUserManagement() {
     Navigator.push(
       context,
@@ -89,6 +38,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+    _selectedStyle ??= provider.themeStyle;
+    _customColorHex ??= provider.customBgColorHex;
+    _imageController.text = provider.customBgImage ?? '';
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -99,143 +52,161 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '账户设置',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              const Text('主题设置', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Card(
+                child: Column(
+                  children: [
+                    RadioListTile<ThemeStyle>(
+                      title: const Text('白天'),
+                      value: ThemeStyle.day,
+                      groupValue: _selectedStyle,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        setState(() => _selectedStyle = v);
+                        await provider.setThemeStyle(v);
+                      },
+                    ),
+                    RadioListTile<ThemeStyle>(
+                      title: const Text('晚上'),
+                      value: ThemeStyle.night,
+                      groupValue: _selectedStyle,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        setState(() => _selectedStyle = v);
+                        await provider.setThemeStyle(v);
+                      },
+                    ),
+                    RadioListTile<ThemeStyle>(
+                      title: const Text('简洁'),
+                      value: ThemeStyle.simple,
+                      groupValue: _selectedStyle,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        setState(() => _selectedStyle = v);
+                        await provider.setThemeStyle(v);
+                      },
+                    ),
+                    RadioListTile<ThemeStyle>(
+                      title: const Text('炫酷'),
+                      value: ThemeStyle.cool,
+                      groupValue: _selectedStyle,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        setState(() => _selectedStyle = v);
+                        await provider.setThemeStyle(v);
+                      },
+                    ),
+                    RadioListTile<ThemeStyle>(
+                      title: const Text('自定义（背景颜色/图片）'),
+                      value: ThemeStyle.custom,
+                      groupValue: _selectedStyle,
+                      onChanged: (v) async {
+                        if (v == null) return;
+                        setState(() => _selectedStyle = v);
+                        await provider.setThemeStyle(v);
+                      },
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 20),
+              const Text('自定义背景', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextFormField(
-                        initialValue: _childName,
+                      const Text('选择背景颜色（示例）'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _colorChip('#FFFFFF', provider),
+                          const SizedBox(width: 8),
+                          _colorChip('#F5F6FA', provider),
+                          const SizedBox(width: 8),
+                          _colorChip('#FFEFD5', provider),
+                          const SizedBox(width: 8),
+                          _colorChip('#E8F5E9', provider),
+                          const SizedBox(width: 8),
+                          _colorChip('#E3F2FD', provider),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('或输入图片 URL（示例：https://.../bg.jpg）'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _imageController,
                         decoration: const InputDecoration(
-                          labelText: '孩子姓名',
+                          labelText: '背景图片 URL 或本地路径',
                           border: OutlineInputBorder(),
                         ),
-                        onChanged: (value) {
-                          _childName = value;
-                          _saveSettings();
+                        onSubmitted: (value) async {
+                          await provider.setCustomBgImage(value.isEmpty ? null : value);
+                          setState(() {});
                         },
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        initialValue: _parentName,
-                        decoration: const InputDecoration(
-                          labelText: '家长姓名',
-                          border: OutlineInputBorder(),
-                        ),
-                        onChanged: (value) {
-                          _parentName = value;
-                          _saveSettings();
-                        },
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              // clear custom image
+                              _imageController.clear();
+                              await provider.setCustomBgImage(null);
+                              setState(() {});
+                            },
+                            child: const Text('清除图片'),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () async {
+                              final value = _imageController.text.trim();
+                              await provider.setCustomBgImage(value.isEmpty ? null : value);
+                              setState(() {});
+                            },
+                            child: const Text('保存图片'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
+                      const SizedBox(height: 12),
+                      const Text('预览'),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 120,
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _navigateToUserManagement,
-                          child: const Text('用户管理'),
+                        decoration: BoxDecoration(
+                          color: _customColorHex != null ? _hexToColor(_customColorHex!) : (provider.customBgColorHex != null ? _hexToColor(provider.customBgColorHex!) : null),
+                          image: provider.customBgImage != null && provider.customBgImage!.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(provider.customBgImage!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _navigateToFamilyManagement,
-                          child: const Text('家庭管理'),
-                        ),
-                      ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 32),
-              const Text(
-                '通知设置',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _navigateToUserManagement,
+                  child: const Text('用户管理'),
                 ),
               ),
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        title: const Text('启用通知'),
-                        value: _notificationsEnabled,
-                        onChanged: (value) {
-                          setState(() {
-                            _notificationsEnabled = value;
-                          });
-                          _saveSettings();
-                        },
-                      ),
-                      const Divider(),
-                      SwitchListTile(
-                        title: const Text('启用提醒'),
-                        value: _remindersEnabled,
-                        onChanged: (value) {
-                          setState(() {
-                            _remindersEnabled = value;
-                          });
-                          _saveSettings();
-                        },
-                      ),
-                      const Divider(),
-                      ListTile(
-                        title: const Text('提醒时间'),
-                        subtitle: Text('${_reminderTime.hour}:${_reminderTime.minute.toString().padLeft(2, '0')}'),
-                        trailing: const Icon(Icons.access_time),
-                        onTap: _selectReminderTime,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                '关于',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const ListTile(
-                        title: Text('应用版本'),
-                        subtitle: Text('1.0.0'),
-                      ),
-                      const Divider(),
-                      const ListTile(
-                        title: Text('检查更新'),
-                        trailing: Icon(Icons.arrow_forward_ios),
-                      ),
-                      const Divider(),
-                      const ListTile(
-                        title: Text('用户协议'),
-                        trailing: Icon(Icons.arrow_forward_ios),
-                      ),
-                      const Divider(),
-                      const ListTile(
-                        title: Text('隐私政策'),
-                        trailing: Icon(Icons.arrow_forward_ios),
-                      ),
-                    ],
-                  ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _navigateToFamilyManagement,
+                  child: const Text('家庭管理'),
                 ),
               ),
             ],
@@ -243,5 +214,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _colorChip(String hex, AppProvider provider) {
+    final color = _hexToColor(hex);
+    return GestureDetector(
+      onTap: () async {
+        _customColorHex = hex;
+        await provider.setCustomBgColorHex(hex);
+        // ensure custom style selected
+        if (_selectedStyle != ThemeStyle.custom) {
+          _selectedStyle = ThemeStyle.custom;
+          await provider.setThemeStyle(ThemeStyle.custom);
+        }
+        setState(() {});
+      },
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+      ),
+    );
+  }
+
+  static Color _hexToColor(String hex) {
+    try {
+      return Color(int.parse(hex.replaceFirst('#', '0xff')));
+    } catch (_) {
+      return const Color(0xFFFFFFFF);
+    }
   }
 }

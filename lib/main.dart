@@ -31,8 +31,66 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+
+    // derive theme data based on selected style
+    ThemeData themeData;
+    ThemeData darkThemeData;
+
+    switch (provider.themeStyle) {
+      case ThemeStyle.night:
+        themeData = ThemeData.dark().copyWith(useMaterial3: true);
+        darkThemeData = ThemeData.dark().copyWith(useMaterial3: true);
+        break;
+      case ThemeStyle.simple:
+        themeData = ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.grey, brightness: Brightness.light),
+          scaffoldBackgroundColor: Colors.white,
+          useMaterial3: true,
+        );
+        darkThemeData = ThemeData.dark().copyWith(useMaterial3: true);
+        break;
+      case ThemeStyle.cool:
+        themeData = ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple, brightness: Brightness.light),
+          scaffoldBackgroundColor: const Color(0xFFEDE7F6),
+          useMaterial3: true,
+        );
+        darkThemeData = ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple, brightness: Brightness.dark),
+          scaffoldBackgroundColor: const Color(0xFF1A237E),
+          useMaterial3: true,
+        );
+        break;
+      case ThemeStyle.custom:
+        final hex = provider.customBgColorHex;
+        Color? bgColor;
+        if (hex != null && hex.isNotEmpty) {
+          try {
+            bgColor = Color(int.parse(hex.replaceFirst('#', '0xff')));
+          } catch (_) {
+            bgColor = const Color(0xFFF5F6FA);
+          }
+        }
+        themeData = ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
+          scaffoldBackgroundColor: bgColor ?? const Color(0xFFF5F6FA),
+          useMaterial3: true,
+        );
+        darkThemeData = ThemeData.dark().copyWith(useMaterial3: true);
+        break;
+      case ThemeStyle.day:
+      default:
+        themeData = ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
+          scaffoldBackgroundColor: const Color(0xFFF5F6FA),
+          useMaterial3: true,
+        );
+        darkThemeData = ThemeData.dark().copyWith(useMaterial3: true);
+    }
+
     return MaterialApp(
-  title: '每日目标',
+      title: '每日目标',
       locale: const Locale('zh', 'CN'),
       supportedLocales: const [
         Locale('zh', 'CN'),
@@ -43,14 +101,8 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blue,
-          brightness: Brightness.light,
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF5F6FA),
-        useMaterial3: true,
-      ),
+      theme: themeData,
+      darkTheme: darkThemeData,
       home: const MainScreen(),
       routes: {
         '/goals': (context) => const GoalListScreen(),
