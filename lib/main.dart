@@ -77,9 +77,12 @@ class MyApp extends StatelessWidget {
             bgColor = const Color(0xFFF5F6FA);
           }
         }
+        // Use transparent scaffold/appBar so the custom background (painted in
+        // MaterialApp.builder) is visible underneath the Scaffold.
         themeData = ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.light),
-          scaffoldBackgroundColor: bgColor ?? const Color(0xFFF5F6FA),
+          scaffoldBackgroundColor: Colors.transparent,
+          appBarTheme: const AppBarTheme(backgroundColor: Colors.transparent, elevation: 0),
           useMaterial3: true,
         );
         darkThemeData = ThemeData.dark().copyWith(useMaterial3: true);
@@ -113,32 +116,57 @@ class MyApp extends StatelessWidget {
   builder: (context, child) {
         Widget content = child ?? const SizedBox.shrink();
 
-        // If a custom background image is set, paint it behind the content
-        if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty) {
-          final path = provider.customBgImage!;
-          final ImageProvider backgroundImage;
-          if (path.startsWith('http')) {
-            backgroundImage = NetworkImage(path);
-          } else {
-            backgroundImage = FileImage(File(path));
+        // If the custom theme is selected, render custom background layers:
+        // - bottom: image (from gallery/camera path or network)
+        // - top: color overlay with adjustable opacity
+        if (provider.themeStyle == ThemeStyle.custom) {
+          Widget bg = const SizedBox.shrink();
+          if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty) {
+            final path = provider.customBgImage!;
+            if (path.startsWith('http')) {
+              bg = Positioned.fill(child: Image.network(path, fit: BoxFit.cover));
+            } else {
+              bg = Positioned.fill(child: Image.file(File(path), fit: BoxFit.cover));
+            }
           }
 
-          content = Stack(
-            children: [
-              Positioned.fill(
-                child: Image(
-                  image: backgroundImage,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned.fill(child: content),
-            ],
-          );
-        }
+          Widget colorOverlay = const SizedBox.shrink();
+          if (provider.customBgColorHex != null && provider.customBgColorHex!.isNotEmpty) {
+            try {
+              final color = Color(int.parse(provider.customBgColorHex!.replaceFirst('#', '0xff')));
+              colorOverlay = Positioned.fill(child: Container(color: color.withOpacity(provider.customBgColorOpacity)));
+            } catch (_) {
+              // ignore parse errors
+            }
+          }
 
-        // If the cool theme is selected, wrap the entire app content in the animated background
-        if (provider.themeStyle == ThemeStyle.cool) {
-          content = AnimatedCoolBackground(child: content, dimContent: true);
+          content = Stack(children: [
+            if (bg is! SizedBox) bg,
+            if (colorOverlay is! SizedBox) colorOverlay,
+            Positioned.fill(child: content),
+          ]);
+        } else {
+          // If a custom background image is set (non-custom theme), paint it behind the content
+          if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty) {
+            final path = provider.customBgImage!;
+            final ImageProvider backgroundImage = path.startsWith('http') ? NetworkImage(path) : FileImage(File(path));
+            content = Stack(
+              children: [
+                Positioned.fill(
+                  child: Image(
+                    image: backgroundImage,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned.fill(child: content),
+              ],
+            );
+          }
+
+          // If the cool theme is selected, wrap the entire app content in the animated background
+          if (provider.themeStyle == ThemeStyle.cool) {
+            content = AnimatedCoolBackground(child: content, dimContent: true);
+          }
         }
 
         return content;
