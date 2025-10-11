@@ -50,12 +50,12 @@ dependencies:
   intl: ^0.20.2
   flutter_localizations:
     sdk: flutter
+  image_picker: ^0.8.7+4
+  flutter_colorpicker: ^1.0.4
   
   # Charts and data visualization
   fl_chart: ^0.68.0
   
-  # Image picker
-  image_picker: ^1.1.2
   
   # Notifications
   flutter_local_notifications: ^17.2.1+1

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/user_management_screen.dart';
 import 'package:xingmubiao/src/screens/family_screen.dart';
@@ -22,6 +26,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     // load handled in didChangeDependencies via provider
   }
+
+  @override
+  void dispose() {
+    _imageController.dispose();
+    super.dispose();
+  }
   void _navigateToUserManagement() {
     Navigator.push(
       context,
@@ -42,16 +52,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _selectedStyle ??= provider.themeStyle;
     _customColorHex ??= provider.customBgColorHex;
     _imageController.text = provider.customBgImage ?? '';
+    final child = provider.selectedChild;
+    final childName = child?.name ?? '未选择孩子';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
       ),
+      // show which child these settings apply to
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text('正在为：$childName 配置', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              const SizedBox.shrink(),
+              const SizedBox(height: 12),
               const Text('主题设置', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Card(
@@ -149,9 +167,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           setState(() {});
                         },
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              // pick from gallery
+                              final picker = ImagePicker();
+                              final XFile? file = await picker.pickImage(source: ImageSource.gallery);
+                              if (file != null) {
+                                // save local file path
+                                await provider.setCustomBgImage(file.path);
+                                _imageController.text = file.path;
+                                setState(() {});
+                              }
+                            },
+                            child: const Text('从相册选择'),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton(
+                            onPressed: () async {
+                              // take photo
+                              final picker = ImagePicker();
+                              final XFile? file = await picker.pickImage(source: ImageSource.camera);
+                              if (file != null) {
+                                await provider.setCustomBgImage(file.path);
+                                _imageController.text = file.path;
+                                setState(() {});
+                              }
+                            },
+                            child: const Text('拍照'),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         children: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              // open color picker dialog
+                              Color current = _customColorHex != null ? _hexToColor(_customColorHex!) : (provider.customBgColorHex != null ? _hexToColor(provider.customBgColorHex!) : const Color(0xFFFFFFFF));
+                              Color picked = current;
+                              await showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('选择颜色'),
+                                  content: SingleChildScrollView(
+                                    child: ColorPicker(
+                                      pickerColor: current,
+                                      onColorChanged: (c) => picked = c,
+                                      showLabel: true,
+                                      pickerAreaHeightPercent: 0.7,
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
+                                    TextButton(
+                                      onPressed: () async {
+                                        final hex = '#${picked.value.toRadixString(16).padLeft(8, '0').substring(2)}';
+                                        await provider.setCustomBgColorHex(hex);
+                                        _customColorHex = hex;
+                                        // switch to custom theme
+                                        await provider.setThemeStyle(ThemeStyle.custom);
+                                        Navigator.of(context).pop();
+                                        setState(() {});
+                                      },
+                                      child: const Text('确定'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: const Text('选择颜色'),
+                          ),
+                          const SizedBox(width: 12),
                           ElevatedButton(
                             onPressed: () async {
                               // clear custom image

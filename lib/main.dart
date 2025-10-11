@@ -2,6 +2,7 @@
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'dart:io';
 
 import 'src/providers/app_provider.dart';
 import 'src/screens/checkin_screen.dart';
@@ -133,9 +134,35 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final provider = Provider.of<AppProvider>(context);
+
+    Widget bodyContent = _screens[_selectedIndex];
+
+    // If a custom background image is set, paint it behind the content
+    if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty) {
+      final path = provider.customBgImage!;
+      final ImageProvider backgroundImage;
+      if (path.startsWith('http')) {
+        backgroundImage = NetworkImage(path);
+      } else {
+        backgroundImage = FileImage(File(path));
+      }
+
+      bodyContent = Stack(
+        children: [
+          Positioned.fill(
+            child: Image(
+              image: backgroundImage,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(child: bodyContent),
+        ],
+      );
+    }
 
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: bodyContent,
       bottomNavigationBar: NavigationBar(
         backgroundColor: theme.colorScheme.surface,
         indicatorColor: theme.colorScheme.primary.withValues(alpha: 0.12),

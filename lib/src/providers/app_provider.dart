@@ -52,7 +52,11 @@ class AppProvider with ChangeNotifier {
   }
 
   Future<void> _loadThemeSettings() async {
-    final style = await LocalDataStore.getString('theme_style');
+    String themeKey = _prefixedKey('theme_style');
+    String colorKey = _prefixedKey('custom_bg_color');
+    String imageKey = _prefixedKey('custom_bg_image');
+
+    final style = await LocalDataStore.getString(themeKey);
     if (style != null) {
       try {
         _themeStyle = ThemeStyle.values.firstWhere((e) => e.toString().split('.').last == style);
@@ -60,23 +64,28 @@ class AppProvider with ChangeNotifier {
         _themeStyle = ThemeStyle.day;
       }
     }
-    _customBgColorHex = await LocalDataStore.getString('custom_bg_color');
-    _customBgImage = await LocalDataStore.getString('custom_bg_image');
+    _customBgColorHex = await LocalDataStore.getString(colorKey);
+    _customBgImage = await LocalDataStore.getString(imageKey);
+  }
+
+  String _prefixedKey(String key) {
+    if (_selectedChildId == null) return key;
+    return '${_selectedChildId}_$key';
   }
 
   Future<void> setThemeStyle(ThemeStyle style) async {
     if (_themeStyle == style) return;
     _themeStyle = style;
-    await LocalDataStore.setString('theme_style', style.toString().split('.').last);
+    await LocalDataStore.setString(_prefixedKey('theme_style'), style.toString().split('.').last);
     notifyListeners();
   }
 
   Future<void> setCustomBgColorHex(String? hex) async {
     _customBgColorHex = hex;
     if (hex == null) {
-      await LocalDataStore.clearKey('custom_bg_color');
+      await LocalDataStore.clearKey(_prefixedKey('custom_bg_color'));
     } else {
-      await LocalDataStore.setString('custom_bg_color', hex);
+      await LocalDataStore.setString(_prefixedKey('custom_bg_color'), hex);
     }
     notifyListeners();
   }
@@ -84,9 +93,9 @@ class AppProvider with ChangeNotifier {
   Future<void> setCustomBgImage(String? image) async {
     _customBgImage = image;
     if (image == null) {
-      await LocalDataStore.clearKey('custom_bg_image');
+      await LocalDataStore.clearKey(_prefixedKey('custom_bg_image'));
     } else {
-      await LocalDataStore.setString('custom_bg_image', image);
+      await LocalDataStore.setString(_prefixedKey('custom_bg_image'), image);
     }
     notifyListeners();
   }
@@ -119,6 +128,8 @@ class AppProvider with ChangeNotifier {
     if (_selectedChildId == childId) return;
     _selectedChildId = childId;
     await LocalDataStore.setString(_selectedChildKey, childId);
+    // load settings for the newly selected child
+    await _loadThemeSettings();
     notifyListeners();
   }
 
