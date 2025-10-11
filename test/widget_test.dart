@@ -22,8 +22,8 @@ void main() {
       ),
     );
 
-    // Verify that the app title is displayed.
-    expect(find.text('星目标'), findsOneWidget);
+  // Verify that the app title is displayed.
+  expect(find.text('每日目标'), findsOneWidget);
     
     // Verify that the main screen is displayed.
     expect(find.byType(MainScreen), findsOneWidget);

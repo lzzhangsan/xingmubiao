@@ -287,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('星目标'),
+        title: const Text('每日目标'),
         actions: [
           const ChildSelector(),
           IconButton(
