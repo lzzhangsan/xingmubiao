@@ -290,15 +290,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         title: const Text('每日目标'),
         actions: [
           const ChildSelector(),
-          IconButton(
-            tooltip: '消息提醒',
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('暂时没有新通知')),
-              );
-            },
-          ),
+          // 通知按钮已移除（无实际功能），保留设置按钮
           IconButton(
             tooltip: '设置',
             icon: const Icon(Icons.settings_outlined),
