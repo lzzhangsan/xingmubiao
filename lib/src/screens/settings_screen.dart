@@ -138,35 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('选择背景颜色（示例）'),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _colorChip('#FFFFFF', provider),
-                          const SizedBox(width: 8),
-                          _colorChip('#F5F6FA', provider),
-                          const SizedBox(width: 8),
-                          _colorChip('#FFEFD5', provider),
-                          const SizedBox(width: 8),
-                          _colorChip('#E8F5E9', provider),
-                          const SizedBox(width: 8),
-                          _colorChip('#E3F2FD', provider),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const Text('或输入图片 URL（示例：https://.../bg.jpg）'),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _imageController,
-                        decoration: const InputDecoration(
-                          labelText: '背景图片 URL 或本地路径',
-                          border: OutlineInputBorder(),
-                        ),
-                        onSubmitted: (value) async {
-                          await provider.setCustomBgImage(value.isEmpty ? null : value);
-                          setState(() {});
-                        },
-                      ),
+                      const SizedBox(height: 6),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -176,7 +148,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               final picker = ImagePicker();
                               final XFile? file = await picker.pickImage(source: ImageSource.gallery);
                               if (file != null) {
-                                // save local file path
                                 await provider.setCustomBgImage(file.path);
                                 _imageController.text = file.path;
                                 setState(() {});
@@ -206,12 +177,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ElevatedButton(
                             onPressed: () async {
                               // open color picker dialog
-                              Color current = _customColorHex != null ? _hexToColor(_customColorHex!) : (provider.customBgColorHex != null ? _hexToColor(provider.customBgColorHex!) : const Color(0xFFFFFFFF));
+                              Color current = _customColorHex != null
+                                  ? _hexToColor(_customColorHex!)
+                                  : (provider.customBgColorHex != null ? _hexToColor(provider.customBgColorHex!) : const Color(0xFFFFFFFF));
                               Color picked = current;
                               await showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  title: const Text('选择颜色'),
+                                  title: const Text('选择颜色（作为上层覆盖）'),
                                   content: SingleChildScrollView(
                                     child: ColorPicker(
                                       pickerColor: current,
@@ -250,32 +223,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             },
                             child: const Text('清除图片'),
                           ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final value = _imageController.text.trim();
-                              await provider.setCustomBgImage(value.isEmpty ? null : value);
-                              setState(() {});
-                            },
-                            child: const Text('保存图片'),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Text('颜色不透明度：'),
+                          Expanded(
+                            child: Slider(
+                              value: provider.customBgColorOpacity,
+                              min: 0.0,
+                              max: 1.0,
+                              divisions: 10,
+                              label: (provider.customBgColorOpacity * 100).round().toString() + '%',
+                              onChanged: (v) async {
+                                await provider.setCustomBgColorOpacity(v);
+                                // ensure custom theme selected
+                                if (_selectedStyle != ThemeStyle.custom) {
+                                  _selectedStyle = ThemeStyle.custom;
+                                  await provider.setThemeStyle(ThemeStyle.custom);
+                                }
+                                setState(() {});
+                              },
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
                       const Text('预览'),
                       const SizedBox(height: 8),
+                      // Preview: image as bottom layer, color overlay on top with opacity
                       Container(
-                        height: 120,
+                        height: 140,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: _customColorHex != null ? _hexToColor(_customColorHex!) : (provider.customBgColorHex != null ? _hexToColor(provider.customBgColorHex!) : null),
-                          image: provider.customBgImage != null && provider.customBgImage!.isNotEmpty
-                              ? DecorationImage(
-                                  image: NetworkImage(provider.customBgImage!),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
                           borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey.shade200,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Stack(
+                            children: [
+                              // image layer (from local file or network)
+                              if (provider.customBgImage != null && provider.customBgImage!.isNotEmpty)
+                                Positioned.fill(
+                                  child: provider.customBgImage!.startsWith('http')
+                                      ? Image.network(provider.customBgImage!, fit: BoxFit.cover)
+                                      : Image.file(File(provider.customBgImage!), fit: BoxFit.cover),
+                                ),
+                              // color overlay
+                              if (( _customColorHex != null && _customColorHex!.isNotEmpty) || provider.customBgColorHex != null)
+                                Positioned.fill(
+                                  child: Container(
+                                    color: (_customColorHex != null ? _hexToColor(_customColorHex!) : (provider.customBgColorHex != null ? _hexToColor(provider.customBgColorHex!) : const Color(0x00000000))).withOpacity(provider.customBgColorOpacity),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

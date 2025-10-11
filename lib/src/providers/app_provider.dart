@@ -23,11 +23,13 @@ class AppProvider with ChangeNotifier {
   ThemeStyle _themeStyle = ThemeStyle.day;
   String? _customBgColorHex;
   String? _customBgImage; // could be a URL or local path
+  double _customBgColorOpacity = 0.4;
   AnimationIntensity _animationIntensity = AnimationIntensity.medium;
 
   ThemeStyle get themeStyle => _themeStyle;
   String? get customBgColorHex => _customBgColorHex;
   String? get customBgImage => _customBgImage;
+  double get customBgColorOpacity => _customBgColorOpacity;
   AnimationIntensity get animationIntensity => _animationIntensity;
 
   List<User> get users => _users;
@@ -59,6 +61,7 @@ class AppProvider with ChangeNotifier {
     String themeKey = _prefixedKey('theme_style');
     String colorKey = _prefixedKey('custom_bg_color');
     String imageKey = _prefixedKey('custom_bg_image');
+  String opacityKey = _prefixedKey('custom_bg_color_opacity');
     String animKey = _prefixedKey('anim_intensity');
 
     final style = await LocalDataStore.getString(themeKey);
@@ -71,6 +74,14 @@ class AppProvider with ChangeNotifier {
     }
     _customBgColorHex = await LocalDataStore.getString(colorKey);
     _customBgImage = await LocalDataStore.getString(imageKey);
+    final opacityStr = await LocalDataStore.getString(opacityKey);
+    if (opacityStr != null) {
+      try {
+        _customBgColorOpacity = double.parse(opacityStr);
+      } catch (_) {
+        _customBgColorOpacity = 0.4;
+      }
+    }
     final anim = await LocalDataStore.getString(animKey);
     if (anim != null) {
       try {
@@ -100,6 +111,12 @@ class AppProvider with ChangeNotifier {
     } else {
       await LocalDataStore.setString(_prefixedKey('custom_bg_color'), hex);
     }
+    notifyListeners();
+  }
+
+  Future<void> setCustomBgColorOpacity(double opacity) async {
+    _customBgColorOpacity = opacity.clamp(0.0, 1.0);
+    await LocalDataStore.setString(_prefixedKey('custom_bg_color_opacity'), _customBgColorOpacity.toString());
     notifyListeners();
   }
 
