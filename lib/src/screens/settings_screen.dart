@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/screens/user_management_screen.dart';
-import 'package:xingmubiao/src/screens/family_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -36,13 +35,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const UserManagementScreen()),
-    );
-  }
-
-  void _navigateToFamilyManagement() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const FamilyScreen()),
     );
   }
 
@@ -343,13 +335,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _navigateToFamilyManagement,
-                  child: const Text('家庭管理'),
-                ),
-              ),
+              const SizedBox(height: 12),
             ],
           ),
         ),
