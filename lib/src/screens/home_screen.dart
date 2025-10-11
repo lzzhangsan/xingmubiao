@@ -33,6 +33,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Goal> _todayGoals = [];
   List<bool> _checkedGoals = [];
   List<Reward> _wishlistPreview = [];
+  List<_WeeklyPointSummary> _weeklySummaries = const [];
+  _WeeklyPointSummary? _weeklyMaxHistory;
+  _WeeklyPointSummary? _weeklyMinHistory;
 
   late final AnimationController _pointsController;
   Animation<int>? _pointsAnimation;
@@ -121,6 +124,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return total;
   }
 
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final normalized = _normalizeDate(date);
+    return normalized.subtract(Duration(days: normalized.weekday - 1));
+  }
+
+  List<_WeeklyPointSummary> _buildWeeklySummaries(List<Point> records, {int weeks = 55}) {
+    final weeklyTotals = <DateTime, int>{};
+    for (final record in records) {
+      if (record.type != 'earned') continue;
+      final recordDate = _normalizeDate(record.createdAt);
+      final weekStart = _startOfWeek(recordDate);
+      weeklyTotals[weekStart] = (weeklyTotals[weekStart] ?? 0) + record.amount;
+    }
+
+    final currentWeekStart = _startOfWeek(_normalizeDate(DateTime.now()));
+    return List<_WeeklyPointSummary>.generate(weeks, (index) {
+      final weekStart = currentWeekStart.subtract(Duration(days: 7 * index));
+      final weekEnd = weekStart.add(const Duration(days: 6));
+      final total = weeklyTotals[weekStart] ?? 0;
+      return _WeeklyPointSummary(
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        total: total,
+      );
+    });
+  }
+
+  _WeeklyPointSummary? _findWeeklyExtreme(
+    List<_WeeklyPointSummary> summaries, {
+    required bool max,
+  }) {
+    if (summaries.length <= 1) return null;
+    final history = summaries.skip(1).toList();
+    if (history.isEmpty) return null;
+    _WeeklyPointSummary result = history.first;
+    for (final item in history.skip(1)) {
+      if (max) {
+        if (item.total > result.total) {
+          result = item;
+        }
+      } else {
+        if (item.total < result.total) {
+          result = item;
+        }
+      }
+    }
+    return result;
+  }
+
+  String _formatDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
+
+  String _formatWeekRange(_WeeklyPointSummary summary) {
+    return '${_formatDate(summary.weekStart)} ~ ${_formatDate(summary.weekEnd)}';
+  }
+
   Future<void> _loadData({bool showLoader = true}) async {
     final provider = _provider;
     if (provider == null || !provider.isInitialized) return;
@@ -135,6 +201,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _checkedGoals = [];
         _wishlistPreview = [];
         _pointsAnimation = null;
+        _weeklySummaries = const [];
+        _weeklyMaxHistory = null;
+        _weeklyMinHistory = null;
       });
       return;
     }
@@ -160,6 +229,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       final todayPoints = _calculateTodayPoints(pointRecords);
       final weekPoints = _calculateWeekPoints(pointRecords);
+      final weeklySummaries = _buildWeeklySummaries(pointRecords);
+      final weeklyMaxHistory = _findWeeklyExtreme(weeklySummaries, max: true);
+      final weeklyMinHistory = _findWeeklyExtreme(weeklySummaries, max: false);
 
       // 根据“今日是否已获得该目标对应的积分”来勾选，确保不会重复加分
       final now = DateTime.now();
@@ -188,6 +260,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           begin: previousPoints,
           end: totalPoints,
         ).animate(_pointsController);
+        _weeklySummaries = weeklySummaries;
+        _weeklyMaxHistory = weeklyMaxHistory;
+        _weeklyMinHistory = weeklyMinHistory;
       });
       _pointsController.forward(from: 0);
     } catch (e) {
@@ -253,6 +328,133 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const WishlistScreen()),
+    );
+  }
+
+  void _showWeeklyPointsDetails() {
+    if (_weeklySummaries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无周积分记录')),
+      );
+      return;
+    }
+
+    final highest = _weeklyMaxHistory;
+    final lowest = _weeklyMinHistory;
+    final summaries = _weeklySummaries;
+    final hasHistory = highest != null || lowest != null;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return FractionallySizedBox(
+          heightFactor: 0.8,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '周积分详情',
+                          style: theme.textTheme.titleLarge,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: '关闭',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (hasHistory) ...[
+                    if (highest != null)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.trending_up, color: Colors.green),
+                        title: const Text('历史最高'),
+                        subtitle: Text(_formatWeekRange(highest)),
+                        trailing: Text(
+                          '${highest.total} 分',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                    if (lowest != null)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.trending_down, color: Colors.redAccent),
+                        title: const Text('历史最低'),
+                        subtitle: Text(_formatWeekRange(lowest)),
+                        trailing: Text(
+                          '${lowest.total} 分',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                      ),
+                  ] else
+                    const ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('暂无历史周积分记录'),
+                    ),
+                  const SizedBox(height: 8),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: summaries.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final summary = summaries[index];
+                        final isCurrentWeek = index == 0;
+                        final isHighest =
+                            highest != null && summary.weekStart == highest.weekStart;
+                        final isLowest =
+                            lowest != null && summary.weekStart == lowest.weekStart;
+                        final baseColor = theme.textTheme.bodyLarge?.color;
+                        final trailingStyle = TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isHighest
+                              ? Colors.green
+                              : isLowest
+                                  ? Colors.redAccent
+                                  : baseColor,
+                        );
+                        return ListTile(
+                          dense: true,
+                          leading: Text(
+                            (index + 1).toString().padLeft(2, '0'),
+                            style: theme.textTheme.bodySmall,
+                          ),
+                          title: Text(_formatWeekRange(summary)),
+                          subtitle: isCurrentWeek
+                              ? const Text('本周')
+                              : isHighest
+                                  ? const Text('历史最高')
+                                  : isLowest
+                                      ? const Text('历史最低')
+                                      : null,
+                          trailing: Text('${summary.total} 分', style: trailingStyle),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -332,6 +534,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       todayPoints: _todayPoints,
                                       weekPoints: _weekPoints,
                                       totalPoints: _totalPoints,
+                                      onWeekTap: _showWeeklyPointsDetails,
                                       animation: _pointsAnimation,
                                     ),
                                     // 快捷操作入口已由底部导航替代，移除冗余按钮
@@ -358,6 +561,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     todayPoints: _todayPoints,
                                     weekPoints: _weekPoints,
                                     totalPoints: _totalPoints,
+                                    onWeekTap: _showWeeklyPointsDetails,
                                     animation: _pointsAnimation,
                                   ),
                                   // 快捷操作入口已由底部导航替代，移除冗余按钮
@@ -387,12 +591,14 @@ class _StatisticsCard extends StatelessWidget {
     required this.weekPoints,
     required this.totalPoints,
     this.animation,
+    this.onWeekTap,
   });
 
   final int todayPoints;
   final int weekPoints;
   final int totalPoints;
   final Animation<int>? animation;
+  final VoidCallback? onWeekTap;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +610,11 @@ class _StatisticsCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _StatItem(title: '今日积分', value: todayPoints.toString()),
-            _StatItem(title: '本周积分', value: weekPoints.toString()),
+            _StatItem(
+              title: '本周积分',
+              value: weekPoints.toString(),
+              onTap: onWeekTap,
+            ),
             _AnimatedStatItem(
               title: '总积分',
               value: totalPoints,
@@ -418,14 +628,15 @@ class _StatisticsCard extends StatelessWidget {
 }
 
 class _StatItem extends StatelessWidget {
-  const _StatItem({required this.title, required this.value});
+  const _StatItem({required this.title, required this.value, this.onTap});
 
   final String title;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final content = Column(
       children: [
         Text(
           value,
@@ -436,6 +647,21 @@ class _StatItem extends StatelessWidget {
           style: const TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
+    );
+
+    final paddedContent = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: content,
+    );
+
+    if (onTap == null) {
+      return paddedContent;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: paddedContent,
     );
   }
 }
@@ -472,6 +698,18 @@ class _AnimatedStatItem extends StatelessWidget {
       ],
     );
   }
+}
+
+class _WeeklyPointSummary {
+  _WeeklyPointSummary({
+    required this.weekStart,
+    required this.weekEnd,
+    required this.total,
+  });
+
+  final DateTime weekStart;
+  final DateTime weekEnd;
+  final int total;
 }
 
 // _QuickActions 已移除
