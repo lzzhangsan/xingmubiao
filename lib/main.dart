@@ -193,10 +193,10 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = const [
+    FamilyDashboardScreen(),
     HomeScreen(),
     GoalListScreen(),
     CheckinScreen(),
-    WishlistScreen(),
   ];
 
   @override
@@ -215,6 +215,11 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _selectedIndex,
         destinations: const [
           NavigationDestination(
+            icon: Icon(Icons.family_restroom_outlined),
+            selectedIcon: Icon(Icons.family_restroom),
+            label: '家庭',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home),
             label: '首页',
@@ -228,11 +233,6 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.check_circle_outlined),
             selectedIcon: Icon(Icons.check_circle),
             label: '打卡',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.card_giftcard_outlined),
-            selectedIcon: Icon(Icons.card_giftcard),
-            label: '心愿',
           ),
         ],
         onDestinationSelected: (index) {
