@@ -323,7 +323,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   itemCount: users.length,
                   itemBuilder: (context, index) {
                     final user = users[index];
-                    final isChild = user.role == 'child';
+                    final isAdmin = user.role == 'parent';
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
@@ -337,7 +337,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ? Text(user.name.isNotEmpty ? user.name[0] : '?')
                               : null,
                         ),
-                        title: Text(user.name),
+                        title: Row(
+                          children: [
+                            Expanded(child: Text(user.name)),
+                            if (isAdmin)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('管理员', style: TextStyle(fontSize: 11, color: Colors.orange)),
+                              ),
+                          ],
+                        ),
                         subtitle: Text(isChild ? '孩子' : '家长'),
                         onTap: () => _showEditUserDialog(context, user),
                         trailing: isChild

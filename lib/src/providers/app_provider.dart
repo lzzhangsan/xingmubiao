@@ -34,8 +34,9 @@ class AppProvider with ChangeNotifier {
 
   List<User> get users => _users;
 
-  List<User> get children =>
-      _users.where((user) => user.role == 'child').toList();
+  List<User> get children => _users; // 所有成员（含管理员）均可作为任务执行者
+  List<User> get members => _users;
+  User? get admin { final admins = _users.where((u) => u.role == 'parent').toList(); return admins.isNotEmpty ? admins.first : null; }
 
   User? get selectedChild {
     if (_selectedChildId == null) return null;
