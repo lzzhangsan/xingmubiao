@@ -95,14 +95,33 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   const SizedBox(height: 8),
                   ...children.map((child) {
                     final count = _todayCheckins[child.id] ?? 0;
+                    final progress = (count / 3.0).clamp(0.0, 1.0); // simple visual target of 3
                     return Card(
-                      child: ListTile(
-                        leading: CircleAvatar(child: Text(child.name.isNotEmpty ? child.name[0] : '?')),
-                        title: Text(child.name),
-                        subtitle: Text('今日已打卡 $count 次'),
-                        trailing: count > 0
-                            ? const Icon(Icons.check_circle, color: Colors.green)
-                            : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(child: Text(child.name.isNotEmpty ? child.name[0] : '?')),
+                                const SizedBox(width: 12),
+                                Expanded(child: Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                Text('今日 $count 次'),
+                                const SizedBox(width: 8),
+                                count > 0
+                                    ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+                                    : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 20),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.grey.shade200,
+                              valueColor: AlwaysStoppedAnimation<Color>(progress > 0.6 ? Colors.green : Colors.blue),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }),
