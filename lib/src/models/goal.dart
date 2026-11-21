@@ -12,6 +12,7 @@ class Goal {
   final bool isActive;
   final String frequency; // 'daily', 'weekly', 'monthly', 'once'
   final String type; // 'habit', 'task', 'challenge'
+  final String ownership; // 'family' or 'personal', default personal for compatibility
 
   Goal({
     required this.id,
@@ -27,7 +28,10 @@ class Goal {
     this.isActive = true,
     this.frequency = 'daily',
     this.type = 'habit',
+    this.ownership = 'personal',
   });
+
+  bool get isFamily => ownership == 'family';
 
   factory Goal.fromJson(Map<String, dynamic> json) {
     return Goal(
@@ -44,6 +48,7 @@ class Goal {
       isActive: json['isActive'] as bool,
       frequency: json['frequency'] as String,
       type: json['type'] as String,
+      ownership: json['ownership'] as String? ?? 'personal',
     );
   }
 
@@ -62,6 +67,7 @@ class Goal {
       'isActive': isActive,
       'frequency': frequency,
       'type': type,
+      'ownership': ownership,
     };
   }
 }
