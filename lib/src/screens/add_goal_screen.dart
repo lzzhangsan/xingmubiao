@@ -46,6 +46,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
   late String _selectedCategoryId;
   late String _frequency;
   late String _type;
+  String _ownership = 'personal';
   Set<String> _assignedChildIds = {};
   bool _assignedInitialized = false;
 
@@ -60,6 +61,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
     _selectedCategoryId = goal?.categoryId ?? 'learning';
     _frequency = goal?.frequency ?? 'daily';
     _type = goal?.type ?? 'habit';
+    _ownership = goal?.ownership ?? 'personal';
   }
 
   @override
@@ -119,6 +121,7 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
         isActive: existing?.isActive ?? true,
         frequency: _frequency,
         type: _type,
+        ownership: _ownership,
       );
 
       if (widget.isEditing) {
@@ -189,7 +192,25 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                 maxLines: 3,
               ),
               const SizedBox(height: 16),
-              TextFormField(
+              
+            const SizedBox(height: 16),
+            const Text('任务归属', style: TextStyle(fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                ChoiceChip(
+                  label: const Text('个人专属'),
+                  selected: _ownership == 'personal',
+                  onSelected: (_) => setState(() => _ownership = 'personal'),
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('家庭公共'),
+                  selected: _ownership == 'family',
+                  onSelected: (_) => setState(() => _ownership = 'family'),
+                ),
+              ],
+            ),
+TextFormField(
                 controller: _pointsController,
                 decoration: const InputDecoration(
                   labelText: '奖励积分',

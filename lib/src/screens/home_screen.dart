@@ -735,7 +735,13 @@ class _TodayGoalsSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              
+              TextButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/family_dashboard'),
+                icon: const Icon(Icons.family_restroom),
+                label: const Text('家庭总览'),
+              ),
+const Text(
                 '今日目标',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
