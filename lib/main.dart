@@ -197,6 +197,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeScreen(),
     GoalListScreen(),
     CheckinScreen(),
+    WishlistScreen(),
   ];
 
   @override
@@ -233,6 +234,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.check_circle_outlined),
             selectedIcon: Icon(Icons.check_circle),
             label: '打卡',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.card_giftcard_outlined),
+            selectedIcon: Icon(Icons.card_giftcard),
+            label: '心愿',
           ),
         ],
         onDestinationSelected: (index) {
