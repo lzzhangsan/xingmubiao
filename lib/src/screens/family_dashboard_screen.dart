@@ -95,6 +95,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   const SizedBox(height: 8),
                   ...children.map((child) {
                     final count = _todayCheckins[child.id] ?? 0;
+                    final personalCount = 0; // placeholder, can be enhanced later
                     final progress = (count / 3.0).clamp(0.0, 1.0); // simple visual target of 3
                     return Card(
                       child: Padding(

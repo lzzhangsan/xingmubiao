@@ -24,6 +24,7 @@ class _GoalListScreenState extends State<GoalListScreen> {
   ];
 
   String _selectedCategoryId = 'all';
+  String _ownershipFilter = 'all'; // all, family, personal
   List<Goal> _goals = [];
   bool _isLoading = true;
   bool _isFetching = false;
@@ -173,9 +174,14 @@ class _GoalListScreenState extends State<GoalListScreen> {
     final provider = context.watch<AppProvider>();
     final selectedChild = provider.selectedChild;
 
-    final filteredGoals = _selectedCategoryId == 'all'
+    var filteredGoals = _selectedCategoryId == 'all'
         ? _goals
         : _goals.where((goal) => goal.categoryId == _selectedCategoryId).toList();
+    if (_ownershipFilter == 'family') {
+      filteredGoals = filteredGoals.where((goal) => goal.isFamily).toList();
+    } else if (_ownershipFilter == 'personal') {
+      filteredGoals = filteredGoals.where((goal) => !goal.isFamily).toList();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -212,6 +218,16 @@ class _GoalListScreenState extends State<GoalListScreen> {
                               final selected = _selectedCategoryId == category['id'];
                               return ChoiceChip(
                                 label: Text(category['name']!),
+
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              ChoiceChip(label: const Text('全部归属'), selected: _ownershipFilter == 'all', onSelected: (_) => setState(() => _ownershipFilter = 'all')),
+                              ChoiceChip(label: const Text('家庭公共'), selected: _ownershipFilter == 'family', onSelected: (_) => setState(() => _ownershipFilter = 'family')),
+                              ChoiceChip(label: const Text('个人专属'), selected: _ownershipFilter == 'personal', onSelected: (_) => setState(() => _ownershipFilter = 'personal')),
+                            ],
+                          ),
                                 selected: selected,
                                 onSelected: (value) {
                                   setState(() {
