@@ -8,6 +8,7 @@ import 'src/providers/app_provider.dart';
 import 'src/screens/checkin_screen.dart';
 import 'src/screens/goal_list_screen.dart';
 import 'src/screens/home_screen.dart';
+import 'src/screens/family_dashboard_screen.dart';
 import 'src/screens/settings_screen.dart';
 import 'src/screens/wishlist_screen.dart';
 import 'src/screens/add_reward_screen.dart';
@@ -175,6 +176,7 @@ class MyApp extends StatelessWidget {
         '/goals': (context) => const GoalListScreen(),
         '/wishlist': (context) => const WishlistScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/family_dashboard': (context) => const FamilyDashboardScreen(),
       },
     );
   }

@@ -54,6 +54,18 @@ class GoalService {
     await _persist();
   }
 
+
+  static Future<List<Goal>> getFamilyGoals() async {
+    await _ensureLoaded();
+    return _cache.where((goal) => goal.isFamily).toList();
+  }
+
+  static Future<List<Goal>> getPersonalGoalsForChild(String childId) async {
+    await _ensureLoaded();
+    return _cache
+        .where((goal) => !goal.isFamily && goal.assignedTo.contains(childId))
+        .toList();
+  }
   static Future<void> clear() async {
     _cache = [];
     _loaded = true;
