@@ -15,6 +15,7 @@ class FamilyDashboardScreen extends StatefulWidget {
 class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
   List<Goal> _familyGoals = [];
   Map<String, int> _todayCheckins = {};
+  Map<String, int> _personalGoalCounts = {};
   int _totalTodayCheckins = 0;
   bool _loading = true;
 
@@ -25,17 +26,26 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
   }
 
   Future<void> _load() async {
-    final goals = await GoalService.getFamilyGoals();
+    final familyGoals = await GoalService.getFamilyGoals();
     final today = DateTime.now();
     final checkins = await CheckinService.getCheckinsByDate(today);
     final Map<String, int> counts = {};
     for (final c in checkins) {
       counts[c.userId] = (counts[c.userId] ?? 0) + 1;
     }
+
+    final provider = context.read<AppProvider>();
+    final Map<String, int> personalCounts = {};
+    for (final child in provider.children) {
+      final personal = await GoalService.getPersonalGoalsForChild(child.id);
+      personalCounts[child.id] = personal.length;
+    }
+
     if (mounted) {
       setState(() {
-        _familyGoals = goals;
+        _familyGoals = familyGoals;
         _todayCheckins = counts;
+        _personalGoalCounts = personalCounts;
         _totalTodayCheckins = checkins.length;
         _loading = false;
       });
@@ -56,7 +66,6 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Family summary card
                   Card(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     child: Padding(
@@ -81,12 +90,12 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   const Text('家庭公共任务', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   if (_familyGoals.isEmpty)
-                    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('暂无家庭公共任务，可在创建目标时选择家庭归属')))
+                    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('暂无家庭公共任务')))
                   else
                     ..._familyGoals.map((g) => Card(
                           child: ListTile(
                             title: Text(g.title),
-                            subtitle: Text('积分: ${g.points} · ${g.frequency == "daily" ? "每天" : g.frequency}'),
+                            subtitle: Text('积分: ${g.points}'),
                             trailing: const Icon(Icons.group),
                           ),
                         )),
@@ -95,8 +104,8 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   const SizedBox(height: 8),
                   ...children.map((child) {
                     final count = _todayCheckins[child.id] ?? 0;
-                    final personalCount = 0; // placeholder, can be enhanced later
-                    final progress = (count / 3.0).clamp(0.0, 1.0); // simple visual target of 3
+                    final personal = _personalGoalCounts[child.id] ?? 0;
+                    final progress = personal > 0 ? (count / personal).clamp(0.0, 1.0) : 0.0;
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -107,9 +116,15 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                               children: [
                                 CircleAvatar(child: Text(child.name.isNotEmpty ? child.name[0] : '?')),
                                 const SizedBox(width: 12),
-                                Expanded(child: Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold))),
-                                Text('今日 $count 次'),
-                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      Text('个人任务 $personal 项 · 今日打卡 $count 次', style: const TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                ),
                                 count > 0
                                     ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
                                     : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 20),
@@ -119,7 +134,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                             LinearProgressIndicator(
                               value: progress,
                               backgroundColor: Colors.grey.shade200,
-                              valueColor: AlwaysStoppedAnimation<Color>(progress > 0.6 ? Colors.green : Colors.blue),
+                              valueColor: AlwaysStoppedAnimation<Color>(progress >= 1.0 ? Colors.green : Colors.blue),
                             ),
                           ],
                         ),
