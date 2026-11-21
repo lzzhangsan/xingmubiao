@@ -312,7 +312,7 @@ class _GoalListItem extends StatelessWidget {
                                 color: Colors.blue.shade100,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Text('家庭', style: TextStyle(fontSize: 12, color: Colors.blue.shade800)),
+                              child: Text('家庭', style: TextStyle(fontSize: 12, color: Color(0xFF1565C0))),
                             ),
                         ],
                       ),
