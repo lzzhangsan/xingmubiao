@@ -15,6 +15,7 @@ class FamilyDashboardScreen extends StatefulWidget {
 class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
   List<Goal> _familyGoals = [];
   Map<String, int> _todayCheckins = {};
+  int _totalTodayCheckins = 0;
   bool _loading = true;
 
   @override
@@ -35,6 +36,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
       setState(() {
         _familyGoals = goals;
         _todayCheckins = counts;
+        _totalTodayCheckins = checkins.length;
         _loading = false;
       });
     }
@@ -54,26 +56,40 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  // Family summary card
                   Card(
+                    color: Theme.of(context).colorScheme.primaryContainer,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('家庭公共任务', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text('今日家庭总览', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
-                          Text('共 ${_familyGoals.length} 项'),
-                          const SizedBox(height: 12),
-                          ..._familyGoals.map((g) => ListTile(
-                                title: Text(g.title),
-                                subtitle: Text('积分: ${g.points} · ${g.frequency}'),
-                                dense: true,
-                              )),
-                          if (_familyGoals.isEmpty) const Text('暂无家庭公共任务，可在创建目标时选择家庭归属'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(children: [Text('${_familyGoals.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)), const Text('公共任务')]),
+                              Column(children: [Text('$_totalTodayCheckins', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)), const Text('今日打卡')]),
+                              Column(children: [Text('${children.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)), const Text('家庭成员')]),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const Text('家庭公共任务', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  if (_familyGoals.isEmpty)
+                    const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('暂无家庭公共任务，可在创建目标时选择家庭归属')))
+                  else
+                    ..._familyGoals.map((g) => Card(
+                          child: ListTile(
+                            title: Text(g.title),
+                            subtitle: Text('积分: ${g.points} · ${g.frequency == "daily" ? "每天" : g.frequency}'),
+                            trailing: const Icon(Icons.group),
+                          ),
+                        )),
                   const SizedBox(height: 16),
                   const Text('今日成员进度', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
@@ -81,15 +97,18 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                     final count = _todayCheckins[child.id] ?? 0;
                     return Card(
                       child: ListTile(
+                        leading: CircleAvatar(child: Text(child.name.isNotEmpty ? child.name[0] : '?')),
                         title: Text(child.name),
                         subtitle: Text('今日已打卡 $count 次'),
-                        trailing: count > 0 ? const Icon(Icons.check_circle, color: Colors.green) : const Icon(Icons.radio_button_unchecked),
+                        trailing: count > 0
+                            ? const Icon(Icons.check_circle, color: Colors.green)
+                            : const Icon(Icons.radio_button_unchecked, color: Colors.grey),
                       ),
                     );
                   }),
                   if (children.isEmpty) const Text('暂无孩子成员'),
-                  const SizedBox(height: 16),
-                  const Text('提示：打卡后刷新即可看到今日进度更新', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 24),
+                  const Center(child: Text('下拉刷新获取最新进度', style: TextStyle(color: Colors.grey))),
                 ],
               ),
             ),
