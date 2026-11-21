@@ -563,9 +563,24 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.goal.title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.goal.title,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (widget.goal.isFamily)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text('家庭', style: TextStyle(fontSize: 11, color: Colors.blue.shade800)),
+                  ),
+              ],
             ),
             if (widget.goal.description.isNotEmpty) ...[
               const SizedBox(height: 8),
