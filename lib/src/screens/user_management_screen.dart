@@ -351,9 +351,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ),
                           ],
                         ),
-                        subtitle: Text(isChild ? '孩子' : '家长'),
+                        subtitle: Text(isAdmin ? '管理员' : '成员'),
                         onTap: () => _showEditUserDialog(context, user),
-                        trailing: isChild
+                        trailing: !isAdmin
                             ? IconButton(
                                 icon: const Icon(Icons.delete_outline),
                                 onPressed: () => _deleteUser(context, user),
