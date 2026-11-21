@@ -316,7 +316,6 @@ class _GoalListItem extends StatelessWidget {
                             ),
                         ],
                       ),
-                      ),
                       if (goal.description.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(goal.description),
