@@ -219,15 +219,6 @@ class _GoalListScreenState extends State<GoalListScreen> {
                               return ChoiceChip(
                                 label: Text(category['name']!),
 
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              ChoiceChip(label: const Text('全部归属'), selected: _ownershipFilter == 'all', onSelected: (_) => setState(() => _ownershipFilter = 'all')),
-                              ChoiceChip(label: const Text('家庭公共'), selected: _ownershipFilter == 'family', onSelected: (_) => setState(() => _ownershipFilter = 'family')),
-                              ChoiceChip(label: const Text('个人专属'), selected: _ownershipFilter == 'personal', onSelected: (_) => setState(() => _ownershipFilter = 'personal')),
-                            ],
-                          ),
                                 selected: selected,
                                 onSelected: (value) {
                                   setState(() {
@@ -238,6 +229,16 @@ class _GoalListScreenState extends State<GoalListScreen> {
                               );
                             }).toList(),
                           ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            children: [
+                              ChoiceChip(label: const Text('全部归属'), selected: _ownershipFilter == 'all', onSelected: (_) => setState(() => _ownershipFilter = 'all')),
+                              ChoiceChip(label: const Text('家庭公共'), selected: _ownershipFilter == 'family', onSelected: (_) => setState(() => _ownershipFilter = 'family')),
+                              ChoiceChip(label: const Text('个人专属'), selected: _ownershipFilter == 'personal', onSelected: (_) => setState(() => _ownershipFilter = 'personal')),
+                            ],
+                          ),
+
                           const SizedBox(height: 16),
                           if (filteredGoals.isEmpty)
                             const Padding(
