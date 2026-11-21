@@ -28,7 +28,7 @@ class GoalService {
   static Future<List<Goal>> getGoalsForChild(String childId) async {
     await _ensureLoaded();
     return _cache
-        .where((goal) => goal.assignedTo.contains(childId))
+        .where((goal) => goal.isFamily || goal.assignedTo.contains(childId))
         .toList();
   }
 
