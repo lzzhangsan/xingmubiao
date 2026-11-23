@@ -583,8 +583,28 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                     ),
                     child: Text('家庭', style: TextStyle(fontSize: 11, color: Colors.blue.shade800)),
                   ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '总分 ${widget.goal.points}',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                  ),
+                ),
               ],
             ),
+            if (_existingCheckinId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  '实际得分：${((_selectedScore.clamp(0, 5) / 5.0) * widget.goal.points).round()} 分',
+                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+              ),
             if (widget.goal.description.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(widget.goal.description),
