@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _weekPoints = 0;
   List<Goal> _todayGoals = [];
   List<bool> _checkedGoals = [];
+  List<int> _actualPointsToday = [];
   List<Reward> _wishlistPreview = [];
   List<_WeeklyPointSummary> _weeklySummaries = const [];
   _WeeklyPointSummary? _weeklyMaxHistory;
@@ -251,9 +252,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _todayPoints = todayPoints;
         _weekPoints = weekPoints;
         _todayGoals = goals;
+        final actualPointsMap = <String, int>{
+          for (final p in pointRecords)
+            if (p.type == 'earned' && p.relatedId != null && p.createdAt.year == now.year && p.createdAt.month == now.month && p.createdAt.day == now.day)
+              p.relatedId!: p.amount
+        };
         _checkedGoals = goals
             .map((g) => earnedTodayGoalIds.contains(g.id))
             .toList(growable: false);
+        _actualPointsToday = goals.map((g) => actualPointsMap[g.id] ?? 0).toList();
         _wishlistPreview = rewards.take(3).toList();
         _isLoading = false;
         _pointsAnimation = IntTween(
@@ -541,6 +548,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     _TodayGoalsSection(
                                       goals: _todayGoals,
                                       checkedGoals: _checkedGoals,
+                                      actualPoints: _actualPointsToday,
                                       onManageGoal: _openGoalList,
                                     ),
                                     _WishlistPreview(
@@ -568,6 +576,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   _TodayGoalsSection(
                                     goals: _todayGoals,
                                     checkedGoals: _checkedGoals,
+                                    actualPoints: _actualPointsToday,
                                     onManageGoal: _openGoalList,
                                   ),
                                   _WishlistPreview(
@@ -718,11 +727,13 @@ class _TodayGoalsSection extends StatelessWidget {
   const _TodayGoalsSection({
     required this.goals,
     required this.checkedGoals,
+    required this.actualPoints,
     required this.onManageGoal,
   });
 
   final List<Goal> goals;
   final List<bool> checkedGoals;
+  final List<int> actualPoints;
   final VoidCallback onManageGoal;
 
   @override
@@ -769,6 +780,7 @@ const Text(
               (entry) => _GoalItem(
                 goal: entry.value,
                 isChecked: checkedGoals[entry.key],
+                actualPoints: actualPoints[entry.key],
               ),
             ),
         ],
@@ -780,9 +792,11 @@ const Text(
 class _GoalItem extends StatelessWidget {
   final Goal goal;
   final bool isChecked;
+  final int actualPoints;
   const _GoalItem({
     required this.goal,
     required this.isChecked,
+    required this.actualPoints,
   });
 
   @override
@@ -824,7 +838,7 @@ class _GoalItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
-            '+${goal.points}分',
+            isChecked ? '实际 ${actualPoints} 分' : '总分 ${goal.points}',
             style: TextStyle(
               color: isChecked ? theme.colorScheme.primary : Colors.grey,
               fontWeight: FontWeight.bold,
