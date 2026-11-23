@@ -486,7 +486,25 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         if (mounted) context.read<AppProvider>().notifyDataChanged();
       } else {
         await CheckinService.updateCheckin(newOrUpdated);
-        // 更新打卡不改变积分，积分只在首次打卡时创建
+        // 同步更新对应的积分记录为实际得分
+        final goal = widget.goal;
+        final star = _selectedScore.clamp(0, 5);
+        final actualPoints = ((star / 5.0) * goal.points).round();
+        final points = await PointService.getPointsByUser(widget.childId);
+        final related = points.where((p) => p.relatedId == goal.id && p.type == 'earned').toList();
+        if (related.isNotEmpty) {
+          final oldPoint = related.first;
+          final updatedPoint = Point(
+            id: oldPoint.id,
+            userId: oldPoint.userId,
+            amount: actualPoints,
+            reason: oldPoint.reason,
+            type: oldPoint.type,
+            relatedId: oldPoint.relatedId,
+            createdAt: oldPoint.createdAt,
+          );
+          await PointService.updatePoint(updatedPoint);
+        }
       }
 
       if (!mounted) return;
