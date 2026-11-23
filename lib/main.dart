@@ -192,13 +192,33 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = const [
+  int _refreshKey = 0;
+  List<Widget> get _screens => [
     FamilyDashboardScreen(),
-    HomeScreen(),
+    HomeScreen(key: ValueKey(_refreshKey)),
     GoalListScreen(),
     CheckinScreen(),
-    WishlistScreen(),
+    WishlistScreen(key: ValueKey(_refreshKey)),
   ];
+
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppProvider>().addListener(_onProviderChanged);
+    });
+  }
+
+  void _onProviderChanged() {
+    if (mounted) setState(() => _refreshKey++);
+  }
+
+  @override
+  void dispose() {
+    try { context.read<AppProvider>().removeListener(_onProviderChanged); } catch (_) {}
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
