@@ -467,10 +467,13 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         
         // 为新打卡创建积分记录
         final goal = widget.goal;
+        // 按星级比例计算实际得分（5 星满分），四舍五入取整
+        final star = _selectedScore.clamp(0, 5);
+        final actualPoints = ((star / 5.0) * goal.points).round();
         final point = Point(
           id: '${newOrUpdated.id}_point',
           userId: widget.childId,
-          amount: goal.points,
+          amount: actualPoints,
           reason: '完成目标: ${goal.title}',
           type: 'earned',
           relatedId: goal.id,
