@@ -27,6 +27,7 @@ class PointService {
 
   static Future<List<Point>> getPointsByUser(String userId) async {
     await _ensureLoaded();
+    await pruneOldSpentPoints();
     return _cache.where((point) => point.userId == userId).toList();
   }
 
@@ -54,6 +55,7 @@ class PointService {
   static Future<Point> addPoint(Point point) async {
     await _ensureLoaded();
     _cache.add(point);
+    await pruneOldSpentPoints();
     await _persist();
     return point;
   }
@@ -71,6 +73,18 @@ class PointService {
     await _ensureLoaded();
     _cache.removeWhere((point) => point.id == pointId);
     await _persist();
+  }
+
+
+  /// 只保留最近一年的兑换记录（spent 类型），超出部分自动清理
+  static Future<void> pruneOldSpentPoints() async {
+    await _ensureLoaded();
+    final oneYearAgo = DateTime.now().subtract(const Duration(days: 365));
+    final before = _cache.length;
+    _cache.removeWhere((p) => p.type == 'spent' && p.createdAt.isBefore(oneYearAgo));
+    if (_cache.length != before) {
+      await _persist();
+    }
   }
 
   static Future<void> clear() async {
