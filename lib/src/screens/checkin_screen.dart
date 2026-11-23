@@ -485,7 +485,30 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         await PointService.addPoint(point);
         if (mounted) context.read<AppProvider>().notifyDataChanged();
       } else {
-        await CheckinService.updateCheckin(newOrUpdated);
+        // 记录分数变更
+        final all = await CheckinService.getCheckins();
+        final existing = all.where((c) => c.id == newOrUpdated.id).firstOrNull;
+        final hist = List<ScoreChange>.from(existing?.history ?? []);
+        if (existing != null && existing.score != newOrUpdated.score) {
+          hist.add(ScoreChange(
+            fromScore: existing.score,
+            toScore: newOrUpdated.score,
+            changedAt: DateTime.now(),
+            note: '分数修改',
+          ));
+        }
+        final withHist = Checkin(
+          id: newOrUpdated.id,
+          goalId: newOrUpdated.goalId,
+          userId: newOrUpdated.userId,
+          score: newOrUpdated.score,
+          comment: newOrUpdated.comment,
+          imageUrl: newOrUpdated.imageUrl,
+          imageUrls: newOrUpdated.imageUrls,
+          createdAt: newOrUpdated.createdAt,
+          history: hist,
+        );
+        await CheckinService.updateCheckin(withHist);
         // 同步更新对应的积分记录为实际得分
         final goal = widget.goal;
         final star = _selectedScore.clamp(0, 5);
@@ -622,9 +645,15 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
             if (_existingCheckinId != null)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  '实际得分：${((_selectedScore.clamp(0, 5) / 5.0) * widget.goal.points).round()} 分',
-                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                child: Row(
+                  children: [
+                    Text(
+                      '实际得分：${((_selectedScore.clamp(0, 5) / 5.0) * widget.goal.points).round()} 分',
+                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    // 如果有历史记录则显示已修改标记（需要从已加载的打卡中获取）
+                  ],
                 ),
               ),
             if (widget.goal.description.isNotEmpty) ...[
