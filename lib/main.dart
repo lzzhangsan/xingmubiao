@@ -262,7 +262,11 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
         onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
+          setState(() {
+            _selectedIndex = index;
+            // 切到首页或心愿页时强制刷新
+            if (index == 1 || index == 4) _refreshKey++;
+          });
         },
       ),
       // No global FAB: each screen manages its own actions. The wishlist
