@@ -210,6 +210,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final editFormKey = GlobalKey<FormState>();
     final editNameController = TextEditingController(text: user.name);
     String editRole = user.role;
+    bool editIsAdmin = user.isAdmin;
+    bool editIsDeputy = user.isDeputyAdmin;
     XFile? editPicked;
 
     showDialog<void>(
@@ -266,6 +268,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         if (value != null) setStateDialog(() => editRole = value);
                       },
                     ),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('设为管理员'),
+                      subtitle: const Text('只能有 1 个'),
+                      value: editIsAdmin,
+                      onChanged: (v) => setStateDialog(() => editIsAdmin = v),
+                    ),
+                    SwitchListTile(
+                      title: const Text('设为副管理员'),
+                      subtitle: const Text('最多 3 个'),
+                      value: editIsDeputy,
+                      onChanged: (v) => setStateDialog(() => editIsDeputy = v),
+                    ),
                   ],
                 ),
               ),
@@ -278,12 +293,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 FilledButton(
                   onPressed: () async {
                     if (!(editFormKey.currentState?.validate() ?? false)) return;
+                    // 执行管理员/副管理员数量限制
+                    final provider = context.read<AppProvider>();
+                    final all = provider.users;
+                    final otherAdmins = all.where((u) => u.id != user.id && u.isAdmin).length;
+                    final otherDeputies = all.where((u) => u.id != user.id && u.isDeputyAdmin).length;
+                    bool finalAdmin = editIsAdmin;
+                    bool finalDeputy = editIsDeputy;
+                    if (finalAdmin && otherAdmins >= 1) finalAdmin = false;
+                    if (finalDeputy && otherDeputies >= 3) finalDeputy = false;
+                    if (finalAdmin) finalDeputy = false; // 管理员不能同时是副管理员
+
                     final updated = User(
                       id: user.id,
                       name: editNameController.text.trim(),
                       email: user.email,
                       role: editRole,
-                      isAdmin: user.isAdmin,
+                      isAdmin: finalAdmin,
+                      isDeputyAdmin: finalDeputy,
                       avatarUrl: editPicked?.path ?? user.avatarUrl,
                       createdAt: user.createdAt,
                     );

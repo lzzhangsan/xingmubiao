@@ -4,6 +4,7 @@ class User {
   final String email;
   final String role; // 'parent' or 'child'
   final bool isAdmin; // 只能有一个管理员
+  final bool isDeputyAdmin; // 最多 3 个副管理员
   final String avatarUrl;
   final DateTime createdAt;
 
@@ -13,6 +14,7 @@ class User {
     required this.email,
     required this.role,
     this.isAdmin = false,
+    this.isDeputyAdmin = false,
     required this.avatarUrl,
     required this.createdAt,
   });
@@ -24,6 +26,7 @@ class User {
       email: json['email'] as String,
       role: json['role'] as String,
       isAdmin: json['isAdmin'] as bool? ?? false,
+      isDeputyAdmin: json['isDeputyAdmin'] as bool? ?? false,
       avatarUrl: json['avatarUrl'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
@@ -36,6 +39,7 @@ class User {
       'email': email,
       'role': role,
       'isAdmin': isAdmin,
+      'isDeputyAdmin': isDeputyAdmin,
       'avatarUrl': avatarUrl,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -47,6 +51,7 @@ class User {
     String? email,
     String? role,
     bool? isAdmin,
+    bool? isDeputyAdmin,
     String? avatarUrl,
     DateTime? createdAt,
   }) {
@@ -56,6 +61,7 @@ class User {
       email: email ?? this.email,
       role: role ?? this.role,
       isAdmin: isAdmin ?? this.isAdmin,
+      isDeputyAdmin: isDeputyAdmin ?? this.isDeputyAdmin,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,
     );
