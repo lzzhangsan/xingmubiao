@@ -46,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppProvider>().addListener(_onDataChanged);
+    });
     _pointsController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 400),
@@ -62,6 +65,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       _provider?.addListener(_handleProviderChanged);
       _handleProviderChanged();
     }
+  }
+
+
+  void _onDataChanged() {
+    if (mounted) _loadData(showLoader: false);
   }
 
   @override
