@@ -92,15 +92,39 @@ class ChildSelector extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              // 将半径从14增加到28（双倍大小）
-              radius: 28,
-              backgroundImage: (selected?.avatarUrl.isNotEmpty ?? false)
-                  ? FileImage(File(selected!.avatarUrl))
-                  : null,
-              child: (selected?.avatarUrl.isEmpty ?? true)
-                  ? Text((selected?.name.isNotEmpty ?? false) ? selected!.name[0] : '?')
-                  : null,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundImage: (selected?.avatarUrl.isNotEmpty ?? false)
+                      ? FileImage(File(selected!.avatarUrl))
+                      : null,
+                  child: (selected?.avatarUrl.isEmpty ?? true)
+                      ? Text((selected?.name.isNotEmpty ?? false) ? selected!.name[0] : '?')
+                      : null,
+                ),
+                if (selected?.isAdmin == true)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle),
+                      child: const Icon(Icons.workspace_premium, size: 14, color: Colors.white),
+                    ),
+                  )
+                else if (selected?.isDeputyAdmin == true)
+                  Positioned(
+                    top: -4,
+                    right: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                      child: const Icon(Icons.star, size: 14, color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 6),
             Text(selected?.name ?? '选择孩子'),
