@@ -117,6 +117,34 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<void> _deleteUser(BuildContext context, User user) async {
+    // 第一道确认
+    final first = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认删除成员'),
+        content: Text('确定要删除「${user.name}」吗？\n删除后该成员的所有目标、打卡、积分都会消失。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('继续', style: TextStyle(color: Colors.orange))),
+        ],
+      ),
+    );
+    if (first != true) return;
+
+    // 第二道确认
+    final second = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('再次确认'),
+        content: Text('这是最后确认。\n删除「${user.name}」后数据将无法恢复，确定要删除吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定删除', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (second != true) return;
+
     final provider = context.read<AppProvider>();
     final messenger = ScaffoldMessenger.of(context);
 
