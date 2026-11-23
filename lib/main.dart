@@ -193,6 +193,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   int _refreshKey = 0;
+  AppProvider? _provider;
   List<Widget> get _screens => [
     FamilyDashboardScreen(),
     HomeScreen(key: ValueKey(_refreshKey)),
@@ -206,7 +207,10 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppProvider>().addListener(_onProviderChanged);
+      if (mounted) {
+        _provider = context.read<AppProvider>();
+        _provider?.addListener(_onProviderChanged);
+      }
     });
   }
 
@@ -216,7 +220,7 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
-    try { context.read<AppProvider>().removeListener(_onProviderChanged); } catch (_) {}
+    _provider?.removeListener(_onProviderChanged);
     super.dispose();
   }
 
