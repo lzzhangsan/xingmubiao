@@ -149,7 +149,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   onTap: () => _showPickAvatarSheet(onPicked: (img) => setState(() => _pickedAvatar = img)),
                   child: CircleAvatar(
                     // 将半径从36增加到72（双倍大小）
-                    radius: 72,
+                    radius: 48,
                     backgroundImage: _pickedAvatar != null ? FileImage(File(_pickedAvatar!.path)) : null,
                     child: _pickedAvatar == null
                         // 将图标大小从28增加到56（双倍大小）
@@ -219,7 +219,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           builder: (context, setStateDialog) {
             return AlertDialog(
               title: const Text('编辑成员'),
-              content: Form(
+              content: SingleChildScrollView(
+                child: Form(
                 key: editFormKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -231,7 +232,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       }),
                       child: CircleAvatar(
                         // 将半径从36增加到72（双倍大小）
-                        radius: 72,
+                        radius: 48,
                         backgroundImage: editPicked != null
                             ? FileImage(File(editPicked!.path))
                             : (user.avatarUrl.isNotEmpty ? FileImage(File(user.avatarUrl)) : null),
@@ -268,6 +269,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ],
                 ),
               ),
+            ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
@@ -281,6 +283,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       name: editNameController.text.trim(),
                       email: user.email,
                       role: editRole,
+                      isAdmin: user.isAdmin,
                       avatarUrl: editPicked?.path ?? user.avatarUrl,
                       createdAt: user.createdAt,
                     );
@@ -323,7 +326,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   itemCount: users.length,
                   itemBuilder: (context, index) {
                     final user = users[index];
-                    final isAdmin = user.role == 'parent';
+                    final isAdmin = user.isAdmin;
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
@@ -351,7 +354,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               ),
                           ],
                         ),
-                        subtitle: Text(isAdmin ? '管理员' : '成员'),
+                        subtitle: Text(user.role == 'parent' ? '家长' : '孩子'),
                         onTap: () => _showEditUserDialog(context, user),
                         trailing: !isAdmin
                             ? IconButton(
