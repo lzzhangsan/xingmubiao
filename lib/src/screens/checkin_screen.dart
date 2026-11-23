@@ -483,6 +483,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
           createdAt: widget.selectedDate,
         );
         await PointService.addPoint(point);
+        if (mounted) context.read<AppProvider>().notifyDataChanged();
       } else {
         await CheckinService.updateCheckin(newOrUpdated);
         // 更新打卡不改变积分，积分只在首次打卡时创建
@@ -649,14 +650,25 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                       padding: const EdgeInsets.only(right: 8),
                       child: GestureDetector(
                         onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (_) => Dialog(
-                              child: InteractiveViewer(
-                                child: Image.file(File(img.path), fit: BoxFit.contain),
+                          final initial = e.key;
+                          Navigator.of(context).push(MaterialPageRoute(
+                            fullscreenDialog: true,
+                            builder: (_) => Scaffold(
+                              backgroundColor: Colors.black,
+                              appBar: AppBar(backgroundColor: Colors.black, iconTheme: const IconThemeData(color: Colors.white)),
+                              body: PageView.builder(
+                                controller: PageController(initialPage: initial),
+                                itemCount: _images.length,
+                                itemBuilder: (_, i) => InteractiveViewer(
+                                  minScale: 0.5,
+                                  maxScale: 4.0,
+                                  child: Center(
+                                    child: Image.file(File(_images[i].path), fit: BoxFit.contain),
+                                  ),
+                                ),
                               ),
                             ),
-                          );
+                          ));
                         },
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),

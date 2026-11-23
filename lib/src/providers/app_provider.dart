@@ -155,6 +155,8 @@ class AppProvider with ChangeNotifier {
     }
   }
 
+  void notifyDataChanged() => notifyListeners();
+
   Future<void> refreshUsers() async {
     await _loadUsers();
     await _loadSelectedChild();
