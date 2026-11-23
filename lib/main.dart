@@ -196,10 +196,10 @@ class _MainScreenState extends State<MainScreen> {
   AppProvider? _provider;
   List<Widget> get _screens => [
     FamilyDashboardScreen(),
-    HomeScreen(key: ValueKey(_refreshKey)),
+    HomeScreen(),
     GoalListScreen(),
     CheckinScreen(),
-    WishlistScreen(key: ValueKey(_refreshKey)),
+    WishlistScreen(),
   ];
 
 
@@ -269,7 +269,7 @@ class _MainScreenState extends State<MainScreen> {
           setState(() {
             _selectedIndex = index;
             // 切到首页或心愿页时强制刷新
-            if (index == 1 || index == 4) _refreshKey++;
+            
           });
         },
       ),
