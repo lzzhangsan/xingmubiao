@@ -379,6 +379,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 ),
                                 child: const Text('管理员', style: TextStyle(fontSize: 11, color: Colors.orange)),
                               ),
+                            if (user.isDeputyAdmin)
+                              Container(
+                                margin: const EdgeInsets.only(left: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text('副管理员', style: TextStyle(fontSize: 11, color: Colors.blue)),
+                              ),
                           ],
                         ),
                         subtitle: Text(user.role == 'parent' ? '家长' : '孩子'),
