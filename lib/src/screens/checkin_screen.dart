@@ -365,7 +365,8 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
   final TextEditingController _commentController = TextEditingController();
   List<XFile> _images = [];
   bool _isSubmitting = false;
-  String? _existingCheckinId; // 若已打卡则保存其ID，支持覆盖更新
+  String? _existingCheckinId;
+  List<ScoreChange> _history = []; // 若已打卡则保存其ID，支持覆盖更新
 
   @override
   void initState() {
@@ -407,6 +408,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
           _selectedScore = existing.score;
           _commentController.text = existing.comment ?? '';
           _images = existing.imageUrls.map((p) => XFile(p)).toList();
+          _history = existing.history;
         } else {
           // 当天没有记录，重置到空白
           _existingCheckinId = null;
@@ -550,8 +552,41 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
     }
   }
 
+
+  void _showHistory() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('分数修改记录'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: _history.reversed.map((h) => ListTile(
+              title: Text('${h.fromScore} 星 → ${h.toScore} 星'),
+              subtitle: Text(h.changedAt.toString().substring(0, 16)),
+            )).toList(),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭'))],
+      ),
+    );
+  }
+
   Future<void> _deleteCheckin() async {
     if (_existingCheckinId == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除这条打卡记录吗？删除后无法恢复。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (ok != true) return;
     
     try {
       // 删除打卡记录
@@ -652,7 +687,18 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                       style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 8),
-                    // 如果有历史记录则显示已修改标记（需要从已加载的打卡中获取）
+                    if (_history.isNotEmpty)
+                      GestureDetector(
+                        onTap: _showHistory,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('已修改', style: TextStyle(fontSize: 11, color: Colors.orange)),
+                        ),
+                      ),
                   ],
                 ),
               ),
