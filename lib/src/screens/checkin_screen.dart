@@ -454,6 +454,22 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
       return;
     }
 
+    // 更新已有打卡时需要确认
+    if (_existingCheckinId != null) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('确认更新'),
+          content: const Text('确定要更新这条打卡的分数吗？\n修改记录会被保留。'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('更新')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
