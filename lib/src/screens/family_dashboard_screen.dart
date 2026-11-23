@@ -4,6 +4,7 @@ import 'package:xingmubiao/src/models/goal.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
 import 'package:xingmubiao/src/services/goal_service.dart';
 import 'package:xingmubiao/src/services/checkin_service.dart';
+import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:intl/intl.dart';
 
 class FamilyDashboardScreen extends StatefulWidget {
@@ -17,6 +18,9 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
   List<Goal> _familyGoals = [];
   Map<String, int> _dateCheckins = {};
   Map<String, int> _personalGoalCounts = {};
+  Map<String, int> _totalPoints = {};
+  Map<String, int> _todayPoints = {};
+  Map<String, int> _remainingPoints = {};
   int _totalDateCheckins = 0;
   DateTime _selectedDate = DateTime.now();
   bool _loading = true;
@@ -42,11 +46,29 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
       personalCounts[child.id] = personal.length;
     }
 
+    // 加载每个成员的积分
+    final Map<String, int> totalPts = {};
+    final Map<String, int> todayPts = {};
+    final Map<String, int> remainPts = {};
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    for (final child in provider.children) {
+      final pts = await PointService.getPointsByUser(child.id);
+      final earned = pts.where((p) => p.type == 'earned').toList();
+      final spent = pts.where((p) => p.type == 'spent').fold(0, (s, p) => s + p.amount);
+      totalPts[child.id] = earned.fold<int>(0, (s, p) => s + p.amount);
+      todayPts[child.id] = earned.where((p) => p.createdAt.isAfter(todayStart)).fold(0, (s, p) => s + p.amount);
+      remainPts[child.id] = totalPts[child.id]! - spent;
+    }
+
     if (mounted) {
       setState(() {
         _familyGoals = familyGoals;
         _dateCheckins = counts;
         _personalGoalCounts = personalCounts;
+        _totalPoints = totalPts;
+        _todayPoints = todayPts;
+        _remainingPoints = remainPts;
         _totalDateCheckins = checkins.length;
         _loading = false;
       });
@@ -133,7 +155,9 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   ...children.map((child) {
                     final count = _dateCheckins[child.id] ?? 0;
                     final personal = _personalGoalCounts[child.id] ?? 0;
-                    final progress = personal > 0 ? (count / personal).clamp(0.0, 1.0) : 0.0;
+                    final family = _familyGoals.length;
+                    final totalTasks = personal + family;
+                    final progress = totalTasks > 0 ? (count / totalTasks).clamp(0.0, 1.0) : 0.0;
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(12),
@@ -148,8 +172,12 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
+                                      Text('历史总分：${_totalPoints[child.id] ?? 0}'),
+                                      Text('今日得分：${_todayPoints[child.id] ?? 0}'),
+                                      Text('剩余积分：${_remainingPoints[child.id] ?? 0}'),
+                                      const SizedBox(height: 4),
                                       Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('个人任务 $personal 项 · 打卡 $count 次', style: const TextStyle(fontSize: 12)),
+                                      Text('总任务 $personal 项 · 打卡 $count 次', style: const TextStyle(fontSize: 12)),
                                     ],
                                   ),
                                 ),
