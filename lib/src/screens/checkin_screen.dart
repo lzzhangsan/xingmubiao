@@ -640,11 +640,38 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
             ),
             const SizedBox(height: 12),
             if (_images.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: _images.asMap().entries.map((e) {
+                    final img = e.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (_) => Dialog(
+                              child: InteractiveViewer(
+                                child: Image.file(File(img.path), fit: BoxFit.contain),
+                              ),
+                            ),
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(File(img.path), width: 80, height: 80, fit: BoxFit.cover),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            if (false && _images.isNotEmpty)
               Column(
                 children: [
                   GestureDetector(
                     onTap: () {
-                      // Show full screen interactive viewer for the original image
                       showDialog(
                         context: context,
                         barrierColor: Colors.transparent,
@@ -663,7 +690,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                                     minScale: 1.0,
                                     maxScale: 5.0,
                                     child: Image.file(
-                                      File(_images.first.path),
+                                      File(_images.first.path), // will be updated
                                       fit: BoxFit.contain,
                                     ),
                                   ),
