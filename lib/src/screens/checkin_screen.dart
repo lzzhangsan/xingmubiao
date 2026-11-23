@@ -132,7 +132,8 @@ class _CheckinScreenState extends State<CheckinScreen> {
     for (final c in _checkins) {
       final goal = goalMap[c.goalId];
       if (goal != null) {
-        total += goal.points;
+        final star = c.score.clamp(0, 5);
+        total += ((star / 5.0) * goal.points).round();
       }
     }
     return total;
@@ -362,7 +363,7 @@ class _CheckinGoalItem extends StatefulWidget {
 class _CheckinGoalItemState extends State<_CheckinGoalItem> {
   int _selectedScore = 0;
   final TextEditingController _commentController = TextEditingController();
-  XFile? _image;
+  List<XFile> _images = [];
   bool _isSubmitting = false;
   String? _existingCheckinId; // 若已打卡则保存其ID，支持覆盖更新
 
@@ -405,15 +406,13 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
           _existingCheckinId = existing.id;
           _selectedScore = existing.score;
           _commentController.text = existing.comment ?? '';
-          _image = (existing.imageUrl != null && existing.imageUrl!.isNotEmpty)
-              ? XFile(existing.imageUrl!)
-              : null;
+          _images = existing.imageUrls.map((p) => XFile(p)).toList();
         } else {
           // 当天没有记录，重置到空白
           _existingCheckinId = null;
           _selectedScore = 0;
           _commentController.text = '';
-          _image = null;
+          _images.clear();
         }
       });
     } catch (_) {
@@ -428,10 +427,14 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
   }
 
   Future<void> _pickImage() async {
+    if (_images.length >= 3) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('最多只能拍 3 张照片')));
+      return;
+    }
     try {
       final image = await ImagePicker().pickImage(source: ImageSource.camera);
       if (image != null) {
-        setState(() => _image = image);
+        setState(() => _images.add(image));
       }
     } catch (e) {
       if (!mounted) return;
@@ -458,7 +461,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         userId: widget.childId,
         score: _selectedScore,
         comment: _commentController.text.isNotEmpty ? _commentController.text : null,
-        imageUrl: _image?.path,
+        imageUrl: _images.isNotEmpty ? _images.first.path : null, imageUrls: _images.map((e) => e.path).toList(),
         createdAt: widget.selectedDate,
       );
 
@@ -545,7 +548,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         _existingCheckinId = null;
         _selectedScore = 0;
         _commentController.text = '';
-        _image = null;
+        _images.clear();
       });
 
       widget.onSubmitted();
@@ -636,7 +639,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
               maxLines: 2,
             ),
             const SizedBox(height: 12),
-            if (_image != null)
+            if (_images.isNotEmpty)
               Column(
                 children: [
                   GestureDetector(
@@ -654,13 +657,13 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                             child: SafeArea(
                               child: Center(
                                 child: Hero(
-                                  tag: _image!.path,
+                                  tag: _images.first.path,
                                   child: InteractiveViewer(
                                     panEnabled: true,
                                     minScale: 1.0,
                                     maxScale: 5.0,
                                     child: Image.file(
-                                      File(_image!.path),
+                                      File(_images.first.path),
                                       fit: BoxFit.contain,
                                     ),
                                   ),
@@ -672,11 +675,11 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
                       );
                     },
                     child: Hero(
-                      tag: _image!.path,
+                      tag: _images.first.path,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.file(
-                          File(_image!.path),
+                          File(_images.first.path),
                           height: 120,
                           fit: BoxFit.cover,
                         ),
@@ -752,7 +755,7 @@ class _CheckinStats extends StatelessWidget {
             children: [
               _StatCard(title: '已完成', value: completedCount.toString()),
               _StatCard(title: '获取积分', value: totalPoints.toString()),
-              _StatCard(title: '平均评分', value: averageScore.toStringAsFixed(1)),
+              _StatCard(title: '平均星级', value: averageScore.toStringAsFixed(1)),
             ],
           ),
         ],
