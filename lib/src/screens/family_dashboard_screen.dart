@@ -153,7 +153,9 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   const SizedBox(height: 16),
                   Text(isToday ? '今日成员进度' : '$dateLabel 成员进度', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  ...children.map((child) {
+                  ...(() {
+                    final sorted = [...children]..sort((a, b) => (_todayPoints[b.id] ?? 0).compareTo(_todayPoints[a.id] ?? 0));
+                    return sorted.map((child) {
                     final count = _dateCheckins[child.id] ?? 0;
                     final personal = _personalGoalCounts[child.id] ?? 0;
                     final family = _familyGoals.length;
@@ -172,7 +174,9 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                   backgroundImage: child.avatarUrl.isNotEmpty ? FileImage(File(child.avatarUrl)) : null,
                                   child: child.avatarUrl.isEmpty ? Text(child.name.isNotEmpty ? child.name[child.name.length - 1] : '?') : null,
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: 8),
+                                _RankMedal(rank: sorted.indexOf(child) + 1),
+                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,13 +205,59 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                         ),
                       ),
                     );
-                  }),
+                  }).toList();
+                  })(),
                   if (children.isEmpty) const Text('暂无孩子成员'),
                   const SizedBox(height: 24),
                   Center(child: Text('点击右上角日历可查看历史进度', style: TextStyle(color: Colors.grey))),
                 ],
               ),
             ),
+    );
+  }
+}
+
+
+class _RankMedal extends StatefulWidget {
+  const _RankMedal({required this.rank});
+  final int rank;
+
+  @override
+  State<_RankMedal> createState() => _RankMedalState();
+}
+
+class _RankMedalState extends State<_RankMedal> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.rank > 3) {
+      return Text('${widget.rank}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey));
+    }
+    final colors = [Colors.amber, Colors.grey.shade400, Colors.orange.shade700];
+    return ScaleTransition(
+      scale: Tween<double>(begin: 0.9, end: 1.15).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(colors: [colors[widget.rank - 1].withOpacity(0.9), colors[widget.rank - 1].withOpacity(0.3)]),
+          boxShadow: [BoxShadow(color: colors[widget.rank - 1].withOpacity(0.6), blurRadius: 8, spreadRadius: 1)],
+        ),
+        child: const Icon(Icons.workspace_premium, color: Colors.white, size: 22),
+      ),
     );
   }
 }
