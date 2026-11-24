@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/models/goal.dart';
@@ -166,7 +167,11 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                           children: [
                             Row(
                               children: [
-                                CircleAvatar(child: Text(child.name.isNotEmpty ? child.name[0] : '?')),
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundImage: child.avatarUrl.isNotEmpty ? FileImage(File(child.avatarUrl)) : null,
+                                  child: child.avatarUrl.isEmpty ? Text(child.name.isNotEmpty ? child.name[0] : '?') : null,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
