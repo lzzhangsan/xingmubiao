@@ -161,8 +161,11 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                     final family = _familyGoals.length;
                     final totalTasks = personal + family;
                     final progress = totalTasks > 0 ? (count / totalTasks).clamp(0.0, 1.0) : 0.0;
+                    final rank = sorted.indexOf(child) + 1;
                     return Card(
-                      child: Padding(
+                      child: Stack(
+                        children: [
+                          Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,6 +206,14 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                             ),
                           ],
                         ),
+                          ),
+                          if (rank <= 3)
+                            Positioned(
+                              top: 6,
+                              right: 6,
+                              child: _AnimatedRankLabel(rank: rank),
+                            ),
+                        ],
                       ),
                     );
                   }).toList();
@@ -257,6 +268,51 @@ class _RankMedalState extends State<_RankMedal> with SingleTickerProviderStateMi
           boxShadow: [BoxShadow(color: colors[widget.rank - 1].withOpacity(0.6), blurRadius: 8, spreadRadius: 1)],
         ),
         child: const Icon(Icons.workspace_premium, color: Colors.white, size: 22),
+      ),
+    );
+  }
+}
+
+
+class _AnimatedRankLabel extends StatefulWidget {
+  const _AnimatedRankLabel({required this.rank});
+  final int rank;
+
+  @override
+  State<_AnimatedRankLabel> createState() => _AnimatedRankLabelState();
+}
+
+class _AnimatedRankLabelState extends State<_AnimatedRankLabel> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final labels = ['第1名', '第2名', '第3名'];
+    return ScaleTransition(
+      scale: Tween<double>(begin: 1.0, end: 1.12).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: Colors.red.withOpacity(0.6), blurRadius: 6, spreadRadius: 1)],
+        ),
+        child: Text(
+          labels[widget.rank - 1],
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+        ),
       ),
     );
   }
