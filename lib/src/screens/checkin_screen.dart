@@ -331,7 +331,7 @@ class _CheckinGoalList extends StatelessWidget {
       itemBuilder: (context, index) {
         // 将日期纳入 Key，避免跨天复用同一 StatefulWidget 状态
         return _CheckinGoalItem(
-          key: ValueKey('${goals[index].id}-${selectedDate.toIso8601String()}'),
+          key: ValueKey('${childId}-${goals[index].id}-${selectedDate.toIso8601String()}'),
           childId: childId,
           goal: goals[index],
           selectedDate: selectedDate,
