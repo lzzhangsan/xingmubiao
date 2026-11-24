@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:provider/provider.dart';
 import 'package:xingmubiao/src/services/point_service.dart';
+import 'package:xingmubiao/src/services/checkin_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
@@ -68,6 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (second != true) return;
 
     await PointService.clear();
+    await CheckinService.clear();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('所有成员分数已清零')));
     }
