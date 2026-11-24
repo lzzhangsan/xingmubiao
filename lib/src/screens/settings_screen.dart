@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 
 import 'package:provider/provider.dart';
+import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:xingmubiao/src/providers/app_provider.dart';
@@ -36,6 +37,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       MaterialPageRoute(builder: (context) => const UserManagementScreen()),
     );
+  }
+
+
+  Future<void> _resetAllPoints(BuildContext context) async {
+    final first = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认清零所有分数'),
+        content: const Text('确定要将所有成员的分数清零吗？\n成员、目标、设置都会保留，仅分数记录被清除。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('继续', style: TextStyle(color: Colors.orange))),
+        ],
+      ),
+    );
+    if (first != true) return;
+
+    final second = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('最后确认'),
+        content: const Text('这是最后确认。\n清零后所有成员的历史分数和剩余积分都会变为 0，且无法恢复。\n确定要继续吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定清零', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (second != true) return;
+
+    await PointService.clear();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('所有成员分数已清零')));
+    }
   }
 
   @override
@@ -336,6 +371,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 12),
               const SizedBox(height: 12),
+
+              const SizedBox(height: 32),
+              Center(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.restart_alt, color: Colors.red),
+                  label: const Text('全员分数清零', style: TextStyle(color: Colors.red)),
+                  onPressed: () => _resetAllPoints(context),
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
