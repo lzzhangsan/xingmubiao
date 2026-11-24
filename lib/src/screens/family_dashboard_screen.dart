@@ -178,8 +178,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                   child: child.avatarUrl.isEmpty ? Text(child.name.isNotEmpty ? child.name[child.name.length - 1] : '?') : null,
                                 ),
                                 const SizedBox(width: 8),
-                                _RankMedal(rank: sorted.indexOf(child) + 1),
-                                const SizedBox(width: 8),
+                                
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,7 +210,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                             Positioned(
                               top: 6,
                               right: 6,
-                              child: _AnimatedRankLabel(rank: rank),
+                              child: _CombinedRankBadge(rank: rank),
                             ),
                         ],
                       ),
@@ -313,6 +312,66 @@ class _AnimatedRankLabelState extends State<_AnimatedRankLabel> with SingleTicke
           labels[widget.rank - 1],
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
         ),
+      ),
+    );
+  }
+}
+
+
+class _CombinedRankBadge extends StatefulWidget {
+  const _CombinedRankBadge({required this.rank});
+  final int rank;
+
+  @override
+  State<_CombinedRankBadge> createState() => _CombinedRankBadgeState();
+}
+
+class _CombinedRankBadgeState extends State<_CombinedRankBadge> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.rank > 3) return const SizedBox.shrink();
+    final colors = [Colors.amber, Colors.grey.shade300, Colors.orange.shade600];
+    final color = colors[widget.rank - 1];
+    return ScaleTransition(
+      scale: Tween<double>(begin: 1.0, end: 1.15).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('第', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(width: 2),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [color, color.withOpacity(0.6)]),
+              boxShadow: [BoxShadow(color: color.withOpacity(0.7), blurRadius: 8, spreadRadius: 1)],
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Center(
+              child: Text(
+                '${widget.rank}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ),
+          const SizedBox(width: 2),
+          const Text('名', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
+        ],
       ),
     );
   }
