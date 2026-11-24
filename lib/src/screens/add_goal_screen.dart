@@ -253,7 +253,7 @@ TextFormField(
               ),
               const SizedBox(height: 24),
               Text(
-                '适用孩子',
+                '适用成员',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),

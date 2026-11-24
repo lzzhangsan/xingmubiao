@@ -391,7 +391,7 @@ class _CheckinGoalItemState extends State<_CheckinGoalItem> {
         widget.selectedDate,
       );
       final existing = sameDayCheckins.firstWhere(
-        (c) => c.goalId == widget.goal.id,
+        (c) => c.goalId == widget.goal.id && c.userId == widget.childId,
         orElse: () => Checkin(
           id: '',
           goalId: widget.goal.id,
