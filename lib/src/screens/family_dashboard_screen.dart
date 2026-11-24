@@ -170,7 +170,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                 CircleAvatar(
                                   radius: 18,
                                   backgroundImage: child.avatarUrl.isNotEmpty ? FileImage(File(child.avatarUrl)) : null,
-                                  child: child.avatarUrl.isEmpty ? Text(child.name.isNotEmpty ? child.name[0] : '?') : null,
+                                  child: child.avatarUrl.isEmpty ? Text(child.name.isNotEmpty ? child.name[child.name.length - 1] : '?') : null,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -182,7 +182,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                       Text('剩余积分：${_remainingPoints[child.id] ?? 0}'),
                                       const SizedBox(height: 4),
                                       Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('总任务 $personal 项 · 打卡 $count 次', style: const TextStyle(fontSize: 12)),
+                                      Text('总任务 $totalTasks 项 · 打卡 $count 次', style: const TextStyle(fontSize: 12)),
                                     ],
                                   ),
                                 ),
