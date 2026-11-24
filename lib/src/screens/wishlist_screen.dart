@@ -104,6 +104,19 @@ class _WishlistScreenState extends State<WishlistScreen> {
     final child = _provider?.selectedChild;
     if (child == null) return;
 
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认兑换'),
+        content: Text('确定要用 ${reward.pointsRequired} 分兑换「${reward.title}」吗？\n兑换后分数将立即扣除。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('兑换')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
     if (_userPoints < reward.pointsRequired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
