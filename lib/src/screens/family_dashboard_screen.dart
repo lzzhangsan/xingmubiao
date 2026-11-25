@@ -349,17 +349,30 @@ class _CombinedRankBadgeState extends State<_CombinedRankBadge> with SingleTicke
       [const Color(0xFFE8E8E8), const Color(0xFFC0C0C0), const Color(0xFF808080)], // silver
       [const Color(0xFFCD7F32), const Color(0xFFB87333), const Color(0xFF8B4513)], // bronze
     ];
+    final ribbonColors = [
+      [const Color(0xFFD32F2F), const Color(0xFF1976D2)], // gold ribbon red/blue
+      [const Color(0xFF1976D2), const Color(0xFF0D47A1)], // silver ribbon blue
+      [const Color(0xFF388E3C), const Color(0xFF1B5E20)], // bronze ribbon green
+    ];
     final colors = medalColors[widget.rank - 1];
+    final ribbons = ribbonColors[widget.rank - 1];
     return ScaleTransition(
-      scale: Tween<double>(begin: 1.0, end: 1.12).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
-      child: Row(
+      scale: Tween<double>(begin: 1.0, end: 1.1).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut)),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('第', style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(width: 3),
+          // Ribbon
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 8, height: 18, color: ribbons[0]),
+              Container(width: 8, height: 18, color: ribbons[1]),
+            ],
+          ),
+          // Medal
           Container(
-            width: 42,
-            height: 42,
+            width: 46,
+            height: 46,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: SweepGradient(
@@ -367,19 +380,19 @@ class _CombinedRankBadgeState extends State<_CombinedRankBadge> with SingleTicke
                 stops: const [0.0, 0.35, 0.7, 1.0],
               ),
               boxShadow: [
-                BoxShadow(color: colors[0].withOpacity(0.6), blurRadius: 10, spreadRadius: 1),
-                const BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(1, 2)),
+                BoxShadow(color: colors[0].withOpacity(0.5), blurRadius: 8, spreadRadius: 1),
               ],
-              border: Border.all(color: Colors.white.withOpacity(0.8), width: 2.5),
+              border: Border.all(color: Colors.white.withOpacity(0.9), width: 3),
             ),
             child: Container(
-              margin: const EdgeInsets.all(4),
+              margin: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [colors[0].withOpacity(0.95), colors[1]],
                   center: const Alignment(-0.3, -0.3),
                 ),
+                border: Border.all(color: colors[2].withOpacity(0.6), width: 1),
               ),
               child: Center(
                 child: Text(
@@ -387,15 +400,13 @@ class _CombinedRankBadgeState extends State<_CombinedRankBadge> with SingleTicke
                   style: TextStyle(
                     color: widget.rank == 2 ? Colors.black87 : Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 20,
                     shadows: const [Shadow(color: Colors.black38, blurRadius: 2, offset: Offset(0.5, 0.5))],
                   ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 3),
-          Text('名', style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 15)),
         ],
       ),
     );
