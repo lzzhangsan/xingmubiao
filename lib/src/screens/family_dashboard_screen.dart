@@ -189,18 +189,20 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                       Text('剩余积分：${_remainingPoints[child.id] ?? 0}'),
                                       const SizedBox(height: 4),
                                       Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text('总任务 $totalTasks 项 · 打卡 $count 次', style: const TextStyle(fontSize: 12)),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('总任务 $totalTasks 项 · 打卡 $count 次', style: const TextStyle(fontSize: 12)),
+                                          const SizedBox(width: 6),
+                                          count > 0
+                                              ? const Icon(Icons.check_circle, color: Colors.green, size: 16)
+                                              : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 16),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 4),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: count > 0
-                                  ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
-                                  : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 18),
                             ),
                             const SizedBox(height: 4),
                             LinearProgressIndicator(
