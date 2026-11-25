@@ -175,6 +175,7 @@ class _MedalPainter extends CustomPainter {
     const botY = _cy - _r * 0.9;
     _band(canvas, pal, topX: _cx - 18, botX: _cx - 2, botY: botY, hw: 7);
     _band(canvas, pal, topX: _cx + 18, botX: _cx + 2, botY: botY, hw: 7);
+    _threadedRibbon(canvas, pal);
 
     // 3. 挂环
     final hook = RRect.fromRectAndRadius(
@@ -419,6 +420,29 @@ class _MedalPainter extends CustomPainter {
     );
   }
 
+  /// 绶带穿过挂环的可见部分。挂环随后绘制在带子上方，形成真实的前后遮挡。
+  void _threadedRibbon(Canvas canvas, _Palette pal) {
+    const width = 6.2;
+    const top = 27.0;
+    const bottom = 47.0;
+    final rect = Rect.fromLTRB(_cx - width / 2, top, _cx + width / 2, bottom);
+    final colors = pal.ribbon;
+    const stops = [0.0, 0.3, 0.7, 1.0];
+    for (var i = 0; i < 3; i++) {
+      final left = rect.left + rect.width * stops[i];
+      final right = rect.left + rect.width * stops[i + 1];
+      canvas.drawRect(Rect.fromLTRB(left, top, right, bottom), Paint()..color = colors[i]);
+    }
+    canvas.drawRect(
+      rect,
+      Paint()..shader = const LinearGradient(colors: [Color(0x24000000), Color(0x00FFFFFF), Color(0x44FFFFFF), Color(0x00000000), Color(0x26000000)]).createShader(rect),
+    );
+    canvas.drawRect(
+      rect,
+      Paint()..style = PaintingStyle.stroke..strokeWidth = 0.45..color = Colors.black.withOpacity(0.2),
+    );
+  }
+
   /// 单侧麦穗：一根弧形主茎，叶片成对长在茎上、斜向穗尖，首尾相连像一串麦穗。
   /// mirror 为 true 时水平镜像到右侧。
   void _wheat(Canvas canvas, _Palette pal, Offset center, double rad,
@@ -431,7 +455,7 @@ class _MedalPainter extends CustomPainter {
     }
 
     const a0 = 0.62 * math.pi; // 茎起点：左下
-    const a1 = 1.40 * math.pi; // 茎终点：左上
+    const a1 = 1.16 * math.pi; // 茎终点：左上；左右顶部各自收尖，中央留出约 1/3 开口
     Offset at(double a) => center + Offset(math.cos(a), math.sin(a)) * rad;
 
     // 主茎
@@ -444,7 +468,7 @@ class _MedalPainter extends CustomPainter {
       stem,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.3
+        ..strokeWidth = 0.7
         ..strokeCap = StrokeCap.round
         ..color = pal.deep.withOpacity(0.85),
     );
@@ -456,12 +480,12 @@ class _MedalPainter extends CustomPainter {
       final a = a0 + (a1 - a0) * f;
       final p = at(a);
       final tangent = a + math.pi / 2; // 指向穗尖
-      final len = 8.2 - 2.4 * f;
-      final wid = 3.3 - 0.7 * f;
+      final len = 4.1 - 1.2 * f;
+      final wid = 1.65 - 0.35 * f;
       _leaf(canvas, pal, p, tangent - 0.62, len, wid); // 外侧
       _leaf(canvas, pal, p, tangent + 0.62, len * 0.82, wid * 0.9); // 内侧
     }
-    _leaf(canvas, pal, at(a1), a1 + math.pi / 2, 6.5, 2.8); // 顶叶
+    _leaf(canvas, pal, at(a1), a1 + math.pi / 2, 3.25, 1.4); // 顶叶
 
     canvas.restore();
   }
@@ -506,7 +530,7 @@ class _MedalPainter extends CustomPainter {
   /// 立体浮雕数字：投影 + 深色描边 + 上缘亮边 + 渐变主体
   void _number(Canvas canvas, _Palette pal, Offset center) {
     final text = '$rank';
-    const fontSize = 28.0;
+    const fontSize = 34.0;
     TextPainter mk(Paint fg) => TextPainter(
           text: TextSpan(
             text: text,
