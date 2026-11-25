@@ -192,12 +192,16 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                     ],
                                   ),
                                 ),
-                                count > 0
-                                    ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
-                                    : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 20),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: count > 0
+                                  ? const Icon(Icons.check_circle, color: Colors.green, size: 18)
+                                  : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 18),
+                            ),
+                            const SizedBox(height: 4),
                             LinearProgressIndicator(
                               value: progress,
                               backgroundColor: Colors.grey.shade200,
