@@ -47,6 +47,8 @@ dependencies:
   # UI and utility
   flutter_svg: ^2.0.10+1
   shared_preferences: ^2.3.1
+  path_provider: ^2.1.4
+  file_picker: ^8.0.0+1
   intl: ^0.20.2
   flutter_localizations:
     sdk: flutter

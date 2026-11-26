@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 
 import 'package:provider/provider.dart';
+import 'package:xingmubiao/src/services/backup_service.dart';
 import 'package:xingmubiao/src/services/point_service.dart';
 import 'package:xingmubiao/src/services/checkin_service.dart';
 import 'package:image_picker/image_picker.dart';
@@ -381,6 +382,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: const Text('全员分数清零', style: TextStyle(color: Colors.red)),
                   onPressed: () => _resetAllPoints(context),
                 ),
+              ),
+              const SizedBox(height: 24),
+              const Text('数据迁移', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () async {
+                  final path = await BackupService.exportAll();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(path != null ? '已导出到：$path' : '导出失败')),
+                  );
+                },
+                child: const Text('导出全部数据'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () async {
+                  final ok = await BackupService.importAll();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(ok ? '导入成功，请重启应用' : '导入取消或失败')),
+                  );
+                },
+                child: const Text('导入全部数据'),
               ),
               const SizedBox(height: 16),
             ],
