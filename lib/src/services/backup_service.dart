@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xingmubiao/src/storage/local_data_store.dart';
 
 class BackupService {
-  static Future<String?> exportAll() async {
+  static Future<void> exportAll() async {
     await LocalDataStore.init();
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys();
@@ -19,22 +21,40 @@ class BackupService {
       'exportedAt': DateTime.now().toIso8601String(),
       'data': data,
     });
-    final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/xingmubiao_backup_${DateTime.now().millisecondsSinceEpoch}.json');
-    await file.writeAsString(jsonStr);
-    return file.path;
+
+    final archive = Archive();
+    final bytes = utf8.encode(jsonStr);
+    archive.addFile(ArchiveFile('xingmubiao_data.json', bytes.length, bytes));
+    final zipBytes = ZipEncoder().encode(archive)!;
+
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/xingmubiao_backup_${DateTime.now().millisecondsSinceEpoch}.zip');
+    await file.writeAsBytes(zipBytes);
+
+    await Share.shareXFiles([XFile(file.path)], text: '星目标数据备份');
   }
 
   static Future<bool> importAll() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['json'],
+      allowedExtensions: ['zip', 'json'],
     );
     if (result == null || result.files.isEmpty) return false;
     final path = result.files.single.path;
     if (path == null) return false;
-    final content = await File(path).readAsString();
-    final decoded = jsonDecode(content) as Map<String, dynamic>;
+
+    String jsonStr;
+    if (path.toLowerCase().endsWith('.zip')) {
+      final bytes = await File(path).readAsBytes();
+      final archive = ZipDecoder().decodeBytes(bytes);
+      final file = archive.findFile('xingmubiao_data.json');
+      if (file == null) return false;
+      jsonStr = utf8.decode(file.content as List<int>);
+    } else {
+      jsonStr = await File(path).readAsString();
+    }
+
+    final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
     final data = decoded['data'] as Map<String, dynamic>? ?? {};
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

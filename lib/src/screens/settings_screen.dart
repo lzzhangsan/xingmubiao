@@ -388,11 +388,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: () async {
-                  final path = await BackupService.exportAll();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(path != null ? '已导出到：$path' : '导出失败')),
-                  );
+                  try {
+                    await BackupService.exportAll();
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('导出失败：$e')),
+                    );
+                  }
                 },
                 child: const Text('导出全部数据'),
               ),
