@@ -155,7 +155,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                   Text(isToday ? '今日成员进度' : '$dateLabel 成员进度', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   ...(() {
-                    final sorted = [...children]..sort((a, b) => (_todayPoints[b.id] ?? 0).compareTo(_todayPoints[a.id] ?? 0));
+                    final sorted = [...children]..sort((a, b) => (_remainingPoints[b.id] ?? 0).compareTo(_remainingPoints[a.id] ?? 0));
                     return sorted.map((child) {
                     final count = _dateCheckins[child.id] ?? 0;
                     final personal = _personalGoalCounts[child.id] ?? 0;
