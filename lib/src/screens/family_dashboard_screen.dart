@@ -52,15 +52,16 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
     final Map<String, int> totalPts = {};
     final Map<String, int> todayPts = {};
     final Map<String, int> remainPts = {};
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
+    final dateStart = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final dateEnd = dateStart.add(const Duration(days: 1));
     for (final child in provider.children) {
       final pts = await PointService.getPointsByUser(child.id);
       final earned = pts.where((p) => p.type == 'earned').toList();
-      final spent = pts.where((p) => p.type == 'spent').fold(0, (s, p) => s + p.amount);
-      totalPts[child.id] = earned.fold<int>(0, (s, p) => s + p.amount);
-      todayPts[child.id] = earned.where((p) => p.createdAt.isAfter(todayStart)).fold(0, (s, p) => s + p.amount);
-      remainPts[child.id] = totalPts[child.id]! - spent;
+      final spentList = pts.where((p) => p.type == 'spent').toList();
+      totalPts[child.id] = earned.where((p) => p.createdAt.isBefore(dateEnd)).fold<int>(0, (s, p) => s + p.amount);
+      todayPts[child.id] = earned.where((p) => !p.createdAt.isBefore(dateStart) && p.createdAt.isBefore(dateEnd)).fold(0, (s, p) => s + p.amount);
+      final spentUpTo = spentList.where((p) => p.createdAt.isBefore(dateEnd)).fold(0, (s, p) => s + p.amount);
+      remainPts[child.id] = totalPts[child.id]! - spentUpTo;
     }
 
     if (mounted) {
@@ -185,7 +186,7 @@ class _FamilyDashboardScreenState extends State<FamilyDashboardScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text('历史总分：${_totalPoints[child.id] ?? 0}'),
-                                      Text('今日得分：${_todayPoints[child.id] ?? 0}'),
+                                      Text(isToday ? '今日得分：${_todayPoints[child.id] ?? 0}' : '当日得分：${_todayPoints[child.id] ?? 0}'),
                                       Text('剩余积分：${_remainingPoints[child.id] ?? 0}'),
                                       const SizedBox(height: 4),
                                       Text(child.name, style: const TextStyle(fontWeight: FontWeight.bold)),
