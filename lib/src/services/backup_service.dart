@@ -64,6 +64,20 @@ class BackupService {
     processList('users', ['avatarUrl']);
     processList('checkins', ['imageUrls']);
 
+    // Collect custom background images (keys containing custom_bg_image)
+    for (final key in data.keys.toList()) {
+      if (key.contains('custom_bg_image')) {
+        final path = data[key] as String?;
+        if (path != null && path.isNotEmpty && File(path).existsSync()) {
+          final ext = path.contains('.') ? path.substring(path.lastIndexOf('.')) : '.jpg';
+          final rel = 'images/bg_$imageIndex$ext';
+          imageMap[rel] = path;
+          data[key] = rel;
+          imageIndex++;
+        }
+      }
+    }
+
     progress?.value = '正在打包数据...';
     final jsonStr = jsonEncode({
       'version': 2,
@@ -164,6 +178,16 @@ class BackupService {
       }
       rewrite('users');
       rewrite('checkins');
+
+      // Rewrite background image paths
+      for (final key in data.keys.toList()) {
+        if (key.contains('custom_bg_image')) {
+          final rel = data[key] as String?;
+          if (rel != null && pathMap.containsKey(rel)) {
+            data[key] = pathMap[rel];
+          }
+        }
+      }
     }
 
     progress?.value = '正在写入数据...';
