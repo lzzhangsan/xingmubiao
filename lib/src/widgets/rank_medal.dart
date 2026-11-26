@@ -173,28 +173,10 @@ class _MedalPainter extends CustomPainter {
 
     // 2. 丝带（左压右）
     const botY = _cy - _r * 0.9;
-    _band(canvas, pal, topX: _cx - 18, botX: _cx - 2, botY: botY, hw: 7);
-    _band(canvas, pal, topX: _cx + 18, botX: _cx + 2, botY: botY, hw: 7);
-    _threadedRibbon(canvas, pal);
-
+    _band(canvas, pal, topX: _cx - 18, botX: _cx - 5, botY: botY, hw: 7);
+    _band(canvas, pal, topX: _cx + 18, botX: _cx + 5, botY: botY, hw: 7);
+    
     // 3. 挂环
-    final hook = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-          center: const Offset(_cx, _cy - _r - 1.5), width: 11, height: 10),
-      const Radius.circular(4),
-    );
-    canvas.drawRRect(
-      hook,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.6
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [pal.light, pal.rim[1], pal.deep],
-        ).createShader(hook.outerRect),
-    );
-
     // 4. 奖牌投影
     canvas.drawCircle(
       c.translate(0, 2.5),
