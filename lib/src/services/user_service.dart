@@ -6,6 +6,11 @@ class UserService {
   static List<User> _cache = [];
   static bool _loaded = false;
 
+  static void resetCache() {
+    _loaded = false;
+    _cache = [];
+  }
+
   static Future<void> _ensureLoaded() async {
     if (_loaded) return;
     final data = await LocalDataStore.loadList(_storageKey);

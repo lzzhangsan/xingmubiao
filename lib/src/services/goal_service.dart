@@ -6,6 +6,10 @@ class GoalService {
   static List<Goal> _cache = [];
   static bool _loaded = false;
 
+  static void resetCache() {
+    _loaded = false;
+  }
+
   static Future<void> _ensureLoaded() async {
     if (_loaded) return;
     final data = await LocalDataStore.loadList(_storageKey);

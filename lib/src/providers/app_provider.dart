@@ -58,6 +58,11 @@ class AppProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> reload() async {
+    UserService.resetCache();
+    await _init();
+  }
+
   Future<void> _loadThemeSettings() async {
     String themeKey = _prefixedKey('theme_style');
     String colorKey = _prefixedKey('custom_bg_color');

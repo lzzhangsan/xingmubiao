@@ -447,9 +447,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   } finally {
                     if (context.mounted) Navigator.of(context).pop();
                   }
+                  if (ok && context.mounted) {
+                    await context.read<AppProvider>().reload();
+                  }
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(ok ? '导入成功，请重启应用' : '导入取消或失败')),
+                      SnackBar(content: Text(ok ? '导入成功，数据已刷新' : '导入取消或失败')),
                     );
                   }
                 },
