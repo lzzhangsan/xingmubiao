@@ -2,13 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xingmubiao/src/storage/local_data_store.dart';
 
 class BackupService {
-  static Future<void> exportAll() async {
+  static Future<void> exportAll({ValueNotifier<String>? progress}) async {
+    progress?.value = '正在准备数据...';
     await LocalDataStore.init();
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys();
@@ -17,20 +19,8 @@ class BackupService {
       data[key] = prefs.get(key);
     }
 
-    // Collect image files and rewrite paths to relative
-    final imageFiles = <String, File>{};
+    final imageMap = <String, String>{}; // rel -> absolute
     int imageIndex = 0;
-
-    void collectAndRewrite(Map<String, dynamic> item, String field) {
-      final path = item[field] as String?;
-      if (path != null && path.isNotEmpty && File(path).existsSync()) {
-        final ext = path.contains('.') ? path.substring(path.lastIndexOf('.')) : '.jpg';
-        final rel = 'images/img_$imageIndex$ext';
-        imageFiles[rel] = File(path);
-        item[field] = rel;
-        imageIndex++;
-      }
-    }
 
     void processList(String key, List<String> fields) {
       final raw = data[key];
@@ -41,23 +31,28 @@ class BackupService {
           if (item is Map<String, dynamic>) {
             for (final f in fields) {
               if (f == 'imageUrls') {
-                final urls = item['imageUrls'] as List? ?? [];
+                final urls = (item['imageUrls'] as List?)?.cast<String>() ?? [];
                 final newUrls = <String>[];
                 for (final u in urls) {
-                  if (u is String && u.isNotEmpty && File(u).existsSync()) {
+                  if (u.isNotEmpty && File(u).existsSync()) {
                     final ext = u.contains('.') ? u.substring(u.lastIndexOf('.')) : '.jpg';
                     final rel = 'images/img_$imageIndex$ext';
-                    imageFiles[rel] = File(u);
+                    imageMap[rel] = u;
                     newUrls.add(rel);
                     imageIndex++;
-                  } else {
-                    newUrls.add(u.toString());
                   }
                 }
                 item['imageUrls'] = newUrls;
                 if (newUrls.isNotEmpty) item['imageUrl'] = newUrls.first;
               } else {
-                collectAndRewrite(item, f);
+                final path = item[f] as String?;
+                if (path != null && path.isNotEmpty && File(path).existsSync()) {
+                  final ext = path.contains('.') ? path.substring(path.lastIndexOf('.')) : '.jpg';
+                  final rel = 'images/img_$imageIndex$ext';
+                  imageMap[rel] = path;
+                  item[f] = rel;
+                  imageIndex++;
+                }
               }
             }
           }
@@ -69,30 +64,40 @@ class BackupService {
     processList('users', ['avatarUrl']);
     processList('checkins', ['imageUrls']);
 
+    progress?.value = '正在打包数据...';
     final jsonStr = jsonEncode({
       'version': 2,
       'exportedAt': DateTime.now().toIso8601String(),
       'data': data,
     });
 
+    final dir = await getTemporaryDirectory();
+    final zipPath = '${dir.path}/xingmubiao_backup_${DateTime.now().millisecondsSinceEpoch}.zip';
     final archive = Archive();
     final jsonBytes = utf8.encode(jsonStr);
     archive.addFile(ArchiveFile('xingmubiao_data.json', jsonBytes.length, jsonBytes));
 
-    for (final entry in imageFiles.entries) {
-      final bytes = await entry.value.readAsBytes();
-      archive.addFile(ArchiveFile(entry.key, bytes.length, bytes));
+    int done = 0;
+    for (final entry in imageMap.entries) {
+      final file = File(entry.value);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        archive.addFile(ArchiveFile(entry.key, bytes.length, bytes));
+      }
+      done++;
+      if (done % 5 == 0 || done == imageMap.length) {
+        progress?.value = '正在打包图片 $done/${imageMap.length}...';
+      }
     }
-
     final zipBytes = ZipEncoder().encode(archive)!;
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/xingmubiao_backup_${DateTime.now().millisecondsSinceEpoch}.zip');
-    await file.writeAsBytes(zipBytes);
+    await File(zipPath).writeAsBytes(zipBytes);
 
-    await Share.shareXFiles([XFile(file.path)], text: '星目标数据备份');
+    progress?.value = '已准备分享';
+    await Share.shareXFiles([XFile(zipPath)], text: '星目标数据备份');
   }
 
-  static Future<bool> importAll() async {
+  static Future<bool> importAll({ValueNotifier<String>? progress}) async {
+    progress?.value = '请选择备份文件';
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['zip', 'json'],
@@ -101,6 +106,7 @@ class BackupService {
     final path = result.files.single.path;
     if (path == null) return false;
 
+    progress?.value = '正在读取备份...';
     String jsonStr;
     Archive? archive;
     if (path.toLowerCase().endsWith('.zip')) {
@@ -116,23 +122,25 @@ class BackupService {
     final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
     final data = Map<String, dynamic>.from(decoded['data'] as Map? ?? {});
 
-    // Restore images if present
     if (archive != null) {
+      progress?.value = '正在还原图片...';
       final appDir = await getApplicationDocumentsDirectory();
       final imgDir = Directory('${appDir.path}/backup_images');
       if (!imgDir.existsSync()) imgDir.createSync(recursive: true);
 
       final pathMap = <String, String>{};
+      int imgCount = 0;
       for (final file in archive.files) {
         if (file.name.startsWith('images/')) {
           final localPath = '${imgDir.path}/${file.name.substring(7)}';
           await File(localPath).writeAsBytes(file.content as List<int>);
           pathMap[file.name] = localPath;
+          imgCount++;
+          if (imgCount % 5 == 0) progress?.value = '正在还原图片 $imgCount...';
         }
       }
 
-      // Rewrite relative paths back to local absolute paths
-      void rewriteList(String key) {
+      void rewrite(String key) {
         final raw = data[key];
         if (raw is! String) return;
         try {
@@ -154,27 +162,22 @@ class BackupService {
           data[key] = jsonEncode(list);
         } catch (_) {}
       }
-
-      rewriteList('users');
-      rewriteList('checkins');
+      rewrite('users');
+      rewrite('checkins');
     }
 
+    progress?.value = '正在写入数据...';
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     for (final entry in data.entries) {
       final value = entry.value;
-      if (value is String) {
-        await prefs.setString(entry.key, value);
-      } else if (value is int) {
-        await prefs.setInt(entry.key, value);
-      } else if (value is double) {
-        await prefs.setDouble(entry.key, value);
-      } else if (value is bool) {
-        await prefs.setBool(entry.key, value);
-      } else if (value is List) {
-        await prefs.setStringList(entry.key, value.cast<String>());
-      }
+      if (value is String) await prefs.setString(entry.key, value);
+      else if (value is int) await prefs.setInt(entry.key, value);
+      else if (value is double) await prefs.setDouble(entry.key, value);
+      else if (value is bool) await prefs.setBool(entry.key, value);
+      else if (value is List) await prefs.setStringList(entry.key, value.cast<String>());
     }
+    progress?.value = '导入完成';
     return true;
   }
 }

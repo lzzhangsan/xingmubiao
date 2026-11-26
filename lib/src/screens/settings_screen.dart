@@ -388,13 +388,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: () async {
+                  final progress = ValueNotifier<String>('准备中...');
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => AlertDialog(
+                      content: ValueListenableBuilder<String>(
+                        valueListenable: progress,
+                        builder: (_, msg, __) => Row(
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(width: 16),
+                            Expanded(child: Text(msg)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
                   try {
-                    await BackupService.exportAll();
+                    await BackupService.exportAll(progress: progress);
                   } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('导出失败：$e')),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('导出失败：$e')));
+                    }
+                  } finally {
+                    if (context.mounted) Navigator.of(context).pop();
                   }
                 },
                 child: const Text('导出全部数据'),
@@ -402,11 +420,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: () async {
-                  final ok = await BackupService.importAll();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(ok ? '导入成功，请重启应用' : '导入取消或失败')),
+                  final progress = ValueNotifier<String>('准备中...');
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => AlertDialog(
+                      content: ValueListenableBuilder<String>(
+                        valueListenable: progress,
+                        builder: (_, msg, __) => Row(
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(width: 16),
+                            Expanded(child: Text(msg)),
+                          ],
+                        ),
+                      ),
+                    ),
                   );
+                  bool ok = false;
+                  try {
+                    ok = await BackupService.importAll(progress: progress);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('导入失败：$e')));
+                    }
+                  } finally {
+                    if (context.mounted) Navigator.of(context).pop();
+                  }
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(ok ? '导入成功，请重启应用' : '导入取消或失败')),
+                    );
+                  }
                 },
                 child: const Text('导入全部数据'),
               ),
